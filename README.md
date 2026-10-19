@@ -1,4 +1,4 @@
-# Video Verteiler
+# TourPost
 
 Handy-Web-App, um ein Video von unterwegs automatisch auf Instagram (später YouTube, TikTok) zu veröffentlichen. Das Smartphone ist die Fernbedienung, ein kleiner Node-Server übernimmt den Upload.
 
