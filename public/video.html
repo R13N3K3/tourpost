@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#061a3a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Video verteilen</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/nav.js" defer></script>
+  <script src="js/video.js" defer></script>
+</head>
+<body>
+  <header class="topbar"><h1>Video verteilen</h1></header>
+  <main>
+    <form id="form" class="card" autocomplete="off">
+      <div class="field">
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="file" accept="video/*">
+          <div id="dropInner" style="display:contents">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0l-4 4m4-4l4 4"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+            <strong>Video auswählen</strong>
+            <span>Aus der Galerie oder direkt aufnehmen</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="title">Beschreibung</label>
+        <textarea id="title" name="title" placeholder="Text für den Beitrag …"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="tags">Hashtags</label>
+        <input type="text" id="tags" name="tags" placeholder="#pilze #natur">
+      </div>
+
+      <div class="field">
+        <label>Plattformen</label>
+        <div class="platforms">
+          <label class="platform">
+            <input type="checkbox" name="platform" value="instagram" checked>
+            <span class="name">Instagram</span>
+          </label>
+          <label class="platform off">
+            <input type="checkbox" name="platform" value="youtube" disabled>
+            <span class="name">YouTube</span><span class="badge">Bald</span>
+          </label>
+          <label class="platform off">
+            <input type="checkbox" name="platform" value="tiktok" disabled>
+            <span class="name">TikTok</span><span class="badge">Bald</span>
+          </label>
+        </div>
+      </div>
+
+      <button type="submit" class="btn" id="submit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+        Absenden
+      </button>
+      <div class="progress" id="progress"><div id="bar"></div></div>
+      <p class="status" id="status"></p>
+    </form>
+
+    <p class="hint">Das Video wird auf deinen Server geladen und von dort automatisch veröffentlicht – du musst nichts weiter tun.</p>
+  </main>
+</body>
+</html>
