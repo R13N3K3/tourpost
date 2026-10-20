@@ -1,7 +1,7 @@
-const CACHE = 'verteiler-v1';
+const CACHE = 'verteiler-v2';
 const FILES = [
-  'index.html', 'video.html', 'touren.html',
-  'css/style.css', 'js/nav.js', 'js/video.js',
+  'index.html', 'video.html', 'vorrat.html', 'touren.html',
+  'css/style.css', 'js/nav.js', 'js/video.js', 'js/vorrat.js',
   'manifest.json', 'icon.svg',
 ];
 

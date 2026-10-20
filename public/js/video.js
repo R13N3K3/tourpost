@@ -6,6 +6,9 @@ const submitBtn = document.getElementById('submit');
 const statusEl = document.getElementById('status');
 const bar = document.getElementById('bar');
 const progress = document.getElementById('progress');
+const whenSel = document.getElementById('when');
+const whenBox = document.getElementById('whenBox');
+const scheduledAt = document.getElementById('scheduledAt');
 
 let selectedFile = null;
 
@@ -18,6 +21,18 @@ function setProgress(pct) {
   progress.classList.toggle('active', pct !== null);
   if (pct !== null) bar.style.width = pct + '%';
 }
+
+// Vorschlag für den Termin: in einer Stunde, in Ortszeit
+function defaultTime() {
+  const d = new Date(Date.now() + 3600e3);
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+whenSel.addEventListener('change', () => {
+  whenBox.classList.toggle('hidden', whenSel.value !== 'schedule');
+  if (whenSel.value === 'schedule' && !scheduledAt.value) scheduledAt.value = defaultTime();
+});
 
 fileInput.addEventListener('change', () => {
   selectedFile = fileInput.files[0] || null;
@@ -37,11 +52,12 @@ fileInput.addEventListener('change', () => {
 function upload(formData) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/publish');
+    xhr.open('POST', '/api/videos');
     xhr.upload.onprogress = e => {
       if (e.lengthComputable) {
-        setProgress(Math.round((e.loaded / e.total) * 100));
-        setStatus(`Video wird hochgeladen … ${Math.round((e.loaded / e.total) * 100)} %`);
+        const pct = Math.round((e.loaded / e.total) * 100);
+        setProgress(pct);
+        setStatus(`Video wird hochgeladen … ${pct} %`);
       }
     };
     xhr.onload = () => {
@@ -55,17 +71,14 @@ function upload(formData) {
 }
 
 const ICONS = { waiting: '…', running: '⏳', done: '✓', error: '✗' };
+const stepsText = item => Object.values(item.steps).map(s => `${ICONS[s.state]} ${s.name}: ${s.text}`).join('\n');
 
-function stepsText(job) {
-  return Object.values(job.steps).map(s => `${ICONS[s.state]} ${s.name}: ${s.text}`).join('\n');
-}
-
-async function waitForJob(jobId) {
+async function waitForItem(id) {
   for (;;) {
-    const res = await fetch(`/api/jobs/${jobId}`);
-    const job = await res.json();
-    if (job.state !== 'running') return job;
-    setStatus(stepsText(job));
+    const res = await fetch(`/api/queue/${id}`);
+    const item = await res.json();
+    if (item.status === 'done' || item.status === 'error') return item;
+    setStatus(stepsText(item));
     await new Promise(r => setTimeout(r, 2000));
   }
 }
@@ -77,21 +90,34 @@ form.addEventListener('submit', async (e) => {
   const chosen = [...form.querySelectorAll('input[name=platform]:checked')].map(i => i.value);
   if (!chosen.length) return setStatus('Bitte mindestens eine Plattform wählen.', 'error');
 
+  const when = whenSel.value;
+  if (when === 'schedule' && !scheduledAt.value) return setStatus('Bitte Datum und Uhrzeit angeben.', 'error');
+
   const data = new FormData();
   data.append('video', selectedFile);
   data.append('title', document.getElementById('title').value);
   data.append('description', document.getElementById('desc').value);
   data.append('tags', document.getElementById('tags').value);
+  data.append('when', when);
+  if (when === 'schedule') data.append('scheduledAt', new Date(scheduledAt.value).toISOString());   // Ortszeit → UTC
   chosen.forEach(p => data.append('platforms', p));
 
   submitBtn.disabled = true;
   try {
     setProgress(0);
-    const { jobId } = await upload(data);
+    const item = await upload(data);
     setProgress(null);
-    setStatus('Wird verarbeitet …');
-    const job = await waitForJob(jobId);
-    setStatus(stepsText(job), job.state === 'done' ? 'ok' : 'error');
+
+    if (when === 'now') {
+      setStatus('Wird verarbeitet …');
+      const done = await waitForItem(item.id);
+      setStatus(stepsText(done), done.status === 'done' ? 'ok' : 'error');
+    } else {
+      const text = when === 'schedule'
+        ? `Geplant für ${new Date(item.scheduledAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })} ✓`
+        : 'Im Vorrat gespeichert ✓';
+      setStatus(`${text}\nZum Ändern: Menüpunkt „Vorrat".`, 'ok');
+    }
   } catch (err) {
     setProgress(null);
     setStatus(err.message, 'error');

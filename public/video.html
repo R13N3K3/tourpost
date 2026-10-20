@@ -62,6 +62,20 @@
         </div>
       </div>
 
+      <div class="field">
+        <label for="when">Wann veröffentlichen?</label>
+        <select id="when" name="when">
+          <option value="now">Sofort</option>
+          <option value="schedule">Zu einem Zeitpunkt</option>
+          <option value="draft">Nur in den Vorrat legen</option>
+        </select>
+      </div>
+
+      <div class="field hidden" id="whenBox">
+        <label for="scheduledAt">Datum und Uhrzeit</label>
+        <input type="datetime-local" id="scheduledAt">
+      </div>
+
       <button type="submit" class="btn" id="submit">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
         Absenden
@@ -70,7 +84,7 @@
       <p class="status" id="status"></p>
     </form>
 
-    <p class="hint">Das Video wird auf deinen Server geladen und von dort automatisch auf den gewählten Plattformen veröffentlicht. YouTube braucht den Titel, Instagram und TikTok bekommen Titel, Beschreibung und Hashtags als Text.</p>
+    <p class="hint">Das Video wird auf deinen Server geladen und zum gewählten Zeitpunkt automatisch auf den Plattformen veröffentlicht. Geplante Videos findest du im Vorrat und kannst sie dort ändern. YouTube braucht den Titel, Instagram und TikTok bekommen Titel, Beschreibung und Hashtags als Text.</p>
   </main>
 </body>
 </html>

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#061a3a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Vorrat</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/nav.js" defer></script>
+  <script src="js/vorrat.js" defer></script>
+</head>
+<body>
+  <header class="topbar"><h1>Vorrat &amp; Planung</h1></header>
+  <main>
+    <div id="list"></div>
+    <p class="empty hidden" id="empty">Noch nichts im Vorrat.<br><a href="video.html">Video hinzufügen</a></p>
+    <p class="status error" id="error"></p>
+
+    <section class="card" id="logCard">
+      <h2 class="section-title">Verlauf</h2>
+      <p class="hint">Jede Veröffentlichung wird protokolliert. Ein Video, das schon gepostet wurde, wird nicht noch einmal hochgeladen.</p>
+      <ul class="log" id="log"></ul>
+    </section>
+  </main>
+</body>
+</html>

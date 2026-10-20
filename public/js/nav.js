@@ -16,6 +16,14 @@ const PAGES = [
     icon: '<rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/>',
   },
   {
+    href: 'vorrat.html',
+    label: 'Vorrat',
+    title: 'Vorrat & Planung',
+    desc: 'Geplante Videos ansehen und ändern',
+    nav: true,
+    icon: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  },
+  {
     href: 'touren.html',
     label: 'Touren',
     title: 'Pilztouren',

@@ -6,6 +6,8 @@ const crypto = require('crypto');
 const { publishReel } = require('./instagram');
 const { publishShort } = require('./youtube');
 const { publishTikTok } = require('./tiktok');
+const queue = require('./queue');
+const log = require('./log');
 
 // einfache .env-Unterstützung ohne Zusatzpaket
 const envFile = path.join(__dirname, '..', '.env');
@@ -19,6 +21,7 @@ if (fs.existsSync(envFile)) {
 const PORT = process.env.PORT || 3000;
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
 const MAX_MB = 500;
+const TICK_MS = 10_000;
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const upload = multer({
@@ -33,63 +36,227 @@ const upload = multer({
 
 const PUBLISHERS = { instagram: publishReel, youtube: publishShort, tiktok: publishTikTok };
 const NAMES = { instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok' };
-const jobs = new Map();
 
+const clean = v => (v || '').trim();
+const cleanPlatforms = v => [].concat(v || []).filter(p => PUBLISHERS[p]);
+const parseTime = v => { const d = new Date(v); return v && !isNaN(d) ? d.toISOString() : null; };
+
+function hashFile(file) {
+  return new Promise((resolve, reject) => {
+    const h = crypto.createHash('sha256');
+    fs.createReadStream(file).on('data', d => h.update(d)).on('end', () => resolve(h.digest('hex'))).on('error', reject);
+  });
+}
+
+// Schritte pro Plattform; bereits veröffentlichte bleiben erhalten (kein doppeltes Posten)
+function stepsFor(platforms, old = {}) {
+  const steps = {};
+  for (const p of platforms) {
+    steps[p] = old[p]?.state === 'done' ? old[p] : { name: NAMES[p], state: 'waiting', text: 'Wartet …' };
+  }
+  return steps;
+}
+
+// ---------- Planer ----------
+let busy = false;
+
+async function runItem(item) {
+  item.status = 'running';
+  queue.save();
+
+  const base = process.env.PUBLIC_BASE_URL || item.base;
+  const filePath = path.join(UPLOAD_DIR, item.file);
+  const caption = [item.title, item.description, item.tags].filter(Boolean).join('\n\n');
+
+  for (const p of item.platforms) {
+    const step = item.steps[p];
+    if (step.state === 'done') continue;
+    step.state = 'running';
+    step.text = 'Wird gestartet …';
+    queue.save();
+    try {
+      const result = await PUBLISHERS[p]({
+        videoUrl: `${base}/media/${item.file}`, filePath,
+        title: item.title, description: item.description, tags: item.tags, caption,
+        onStatus: s => { step.text = s; },
+      });
+      step.state = 'done';
+      step.text = 'Veröffentlicht ✓';
+      step.result = result?.id;
+      log.add({ itemId: item.id, hash: item.hash, title: item.title, platform: p, status: 'done', result: result?.id, test: !!result?.test });
+    } catch (err) {
+      console.error(`${NAMES[p]}:`, err);
+      step.state = 'error';
+      step.text = err.message;
+      log.add({ itemId: item.id, hash: item.hash, title: item.title, platform: p, status: 'error', error: err.message });
+    }
+    queue.save();
+  }
+
+  const allDone = item.platforms.every(p => item.steps[p].state === 'done');
+  item.status = allDone ? 'done' : 'error';
+  if (allDone) {
+    item.finishedAt = new Date().toISOString();
+    fs.unlink(filePath, () => {});   // Video wird nach dem Veröffentlichen nicht mehr gebraucht
+  }
+  queue.save();
+}
+
+async function tick() {
+  if (busy) return;
+  const now = Date.now();
+  const due = queue.raw()
+    .filter(i => i.status === 'queued' && new Date(i.scheduledAt).getTime() <= now)
+    .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))[0];
+  if (!due) return;
+  busy = true;
+  try { await runItem(due); } finally { busy = false; }
+  setImmediate(tick);
+}
+const kick = () => setImmediate(tick);
+
+// Beim Start: unterbrochene Aufträge nicht automatisch wiederholen, sonst droht doppeltes Posten
+for (const item of queue.raw()) {
+  if (item.status !== 'running') continue;
+  item.status = 'error';
+  for (const step of Object.values(item.steps)) {
+    if (step.state === 'running') {
+      step.state = 'error';
+      step.interrupted = true;
+      step.text = 'Unterbrochen – bitte prüfen, ob schon veröffentlicht wurde.';
+    }
+  }
+}
+queue.save();
+
+// ---------- Routen ----------
 const app = express();
+app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 // Instagram muss das Video über diese öffentliche URL abholen können
 app.use('/media', express.static(UPLOAD_DIR));
 
-app.post('/api/publish', upload.single('video'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Bitte eine Videodatei auswählen.' });
+app.post('/api/videos', upload.single('video'), async (req, res) => {
+  const fail = (code, error) => {
+    if (req.file) fs.unlink(req.file.path, () => {});
+    return res.status(code).json({ error });
+  };
+  if (!req.file) return fail(400, 'Bitte eine Videodatei auswählen.');
 
-  const platforms = [].concat(req.body.platforms || []).filter(p => PUBLISHERS[p]);
-  if (!platforms.length) {
-    fs.unlink(req.file.path, () => {});
-    return res.status(400).json({ error: 'Keine gültige Plattform gewählt.' });
+  const platforms = cleanPlatforms(req.body.platforms);
+  if (!platforms.length) return fail(400, 'Keine gültige Plattform gewählt.');
+
+  // Dasselbe Video nie zweimal hochladen: Vergleich über den Inhalt, nicht über den Dateinamen
+  const hash = await hashFile(req.file.path);
+  const inStock = queue.raw().find(i => i.hash === hash && i.status !== 'done');
+  if (inStock) return fail(409, `Dieses Video ist schon im Vorrat („${inStock.title || inStock.originalName}").`);
+  const posted = log.published(hash);
+  if (posted.length) {
+    const where = [...new Set(posted.map(e => NAMES[e.platform]))].join(', ');
+    const day = new Date(posted[0].time).toLocaleDateString('de-DE');
+    return fail(409, `Dieses Video wurde bereits am ${day} auf ${where} veröffentlicht und wird nicht erneut hochgeladen.`);
   }
 
-  const clean = v => (v || '').trim();
-  const title = clean(req.body.title);
-  const description = clean(req.body.description);
-  const tags = clean(req.body.tags);
-  const caption = [title, description, tags].filter(Boolean).join('\n\n');
-  const base = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
-  const videoUrl = `${base}/media/${req.file.filename}`;
+  const when = req.body.when || 'now';
+  let scheduledAt = null;
+  let status = 'draft';
+  if (when === 'now') {
+    scheduledAt = new Date().toISOString();
+    status = 'queued';
+  } else if (when === 'schedule') {
+    scheduledAt = parseTime(req.body.scheduledAt);
+    if (!scheduledAt) return fail(400, 'Bitte Datum und Uhrzeit angeben.');
+    status = 'queued';
+  }
 
-  const id = crypto.randomBytes(6).toString('hex');
-  const job = { id, state: 'running', steps: {} };
-  platforms.forEach(p => { job.steps[p] = { name: NAMES[p], state: 'waiting', text: 'Wartet …' }; });
-  jobs.set(id, job);
-  res.json({ jobId: id });
-
-  (async () => {
-    for (const p of platforms) {
-      const step = job.steps[p];
-      step.state = 'running';
-      step.text = 'Wird gestartet …';
-      try {
-        await PUBLISHERS[p]({
-          videoUrl, filePath: req.file.path, title, description, tags, caption,
-          onStatus: s => { step.text = s; },
-        });
-        step.state = 'done';
-        step.text = 'Veröffentlicht ✓';
-      } catch (err) {
-        console.error(`${NAMES[p]}:`, err);
-        step.state = 'error';
-        step.text = err.message;
-      }
-    }
-    job.state = Object.values(job.steps).every(s => s.state === 'done') ? 'done' : 'error';
-    fs.unlink(req.file.path, () => {});
-  })();
+  const item = {
+    id: crypto.randomBytes(6).toString('hex'),
+    file: req.file.filename,
+    originalName: req.file.originalname,
+    size: req.file.size,
+    hash,
+    title: clean(req.body.title).slice(0, 100),
+    description: clean(req.body.description),
+    tags: clean(req.body.tags),
+    platforms,
+    steps: stepsFor(platforms),
+    scheduledAt,
+    status,
+    base: `${req.protocol}://${req.get('host')}`,
+    createdAt: new Date().toISOString(),
+  };
+  queue.add(item);
+  kick();
+  res.json(queue.view(item));
 });
 
-app.get('/api/jobs/:id', (req, res) => {
-  const job = jobs.get(req.params.id);
-  if (!job) return res.status(404).json({ error: 'Unbekannter Auftrag.' });
-  res.json(job);
+app.get('/api/queue', (req, res) => res.json(queue.all()));
+
+app.get('/api/log', (req, res) => {
+  res.json(log.all().reverse().slice(0, 50).map(({ hash, ...rest }) => rest));
+});
+
+app.get('/api/queue/:id', (req, res) => {
+  const item = queue.find(req.params.id);
+  if (!item) return res.status(404).json({ error: 'Video nicht gefunden.' });
+  res.json(queue.view(item));
+});
+
+app.patch('/api/queue/:id', (req, res) => {
+  const item = queue.find(req.params.id);
+  if (!item) return res.status(404).json({ error: 'Video nicht gefunden.' });
+  if (item.status === 'running' || item.status === 'done') {
+    return res.status(409).json({ error: 'Dieses Video kann nicht mehr geändert werden.' });
+  }
+
+  const b = req.body || {};
+  let platforms = null;
+  if ('platforms' in b) {
+    platforms = cleanPlatforms(b.platforms);
+    if (!platforms.length) return res.status(400).json({ error: 'Keine gültige Plattform gewählt.' });
+  }
+  let scheduledAt = null;
+  if (b.when === 'schedule') {
+    scheduledAt = parseTime(b.scheduledAt);
+    if (!scheduledAt) return res.status(400).json({ error: 'Bitte Datum und Uhrzeit angeben.' });
+  }
+
+  if ('title' in b) item.title = clean(b.title).slice(0, 100);
+  if ('description' in b) item.description = clean(b.description);
+  if ('tags' in b) item.tags = clean(b.tags);
+  if (platforms) {
+    item.platforms = platforms;
+    item.steps = stepsFor(platforms, item.steps);
+  }
+  if (b.when === 'now') {
+    item.scheduledAt = new Date().toISOString();
+    item.status = 'queued';
+  } else if (b.when === 'schedule') {
+    item.scheduledAt = scheduledAt;
+    item.status = 'queued';
+  } else if (b.when === 'draft') {
+    item.scheduledAt = null;
+    item.status = 'draft';
+  }
+  // beim erneuten Einplanen nur die fehlgeschlagenen Plattformen wiederholen
+  if (item.status === 'queued') {
+    for (const step of Object.values(item.steps)) {
+      if (step.state === 'error') { step.state = 'waiting'; step.text = 'Wartet …'; delete step.interrupted; }
+    }
+  }
+
+  queue.save();
+  kick();
+  res.json(queue.view(item));
+});
+
+app.delete('/api/queue/:id', (req, res) => {
+  const item = queue.find(req.params.id);
+  if (!item) return res.status(404).json({ error: 'Video nicht gefunden.' });
+  if (item.status === 'running') return res.status(409).json({ error: 'Das Video wird gerade veröffentlicht.' });
+  queue.remove(item.id);
+  fs.unlink(path.join(UPLOAD_DIR, item.file), () => {});
+  res.json({ ok: true });
 });
 
 app.use((err, req, res, next) => {
@@ -100,4 +267,6 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Läuft auf http://localhost:${PORT} (Instagram-Modus: ${process.env.IG_MODE === 'live' ? 'LIVE' : 'Test'})`);
+  setInterval(tick, TICK_MS);
+  kick();
 });
