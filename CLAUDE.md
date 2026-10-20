@@ -30,6 +30,10 @@ Der Nutzer muss nicht jedes Mal daran erinnern.
 - `DEBUG_REQUESTS=1` protokolliert jede Anfrage mit Dauer.
 - Zustand liegt in `data/` (`queue.json`, `settings.json`, `log.jsonl`) und ist nicht im Repo. `uploads/` und `.env` ebenfalls nicht.
 
+## Todo
+
+- **Telegram-Bot**: Liefert Status-Updates zu Uploads (Vorrat → wird gepostet → erfolgreich/fehlgeschlagen, Links zu den Beiträgen) und andere Kennzahlen wie Likes und Views pro Video und Plattform. Kennzahlen müssen dafür per API der Plattformen abgefragt werden (Instagram Insights, YouTube Data/Analytics API, TikTok API). Kann die bestehenden ntfy-Benachrichtigungen (`server/notify.js`) ergänzen oder ersetzen. Bot-Token und Chat-ID kommen in die `.env`, nie ins Repo.
+
 ## Regeln
 
 - **Keine Zugangsdaten** (`.env`, Tokens, SSH-Schlüssel) committen oder im Chat ausgeben.

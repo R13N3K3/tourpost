@@ -211,7 +211,7 @@ function renderDays(slots) {
     return `
       <div class="day">
         <label><input type="checkbox" data-day="${d}" ${slot ? 'checked' : ''}><span>${DAY_NAMES[d]}</span></label>
-        <input type="time" data-time="${d}" value="${slot ? slot.time : '18:00'}" ${slot ? '' : 'disabled'}>
+        <input type="time" data-time="${d}" value="${slot ? slot.time : '12:00'}" ${slot ? '' : 'disabled'}>
       </div>`;
   }).join('');
 }
