@@ -5,6 +5,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { publishReel } = require('./instagram');
 const { publishShort } = require('./youtube');
+const media = require('./media');
 const { publishTikTok } = require('./tiktok');
 const queue = require('./queue');
 const log = require('./log');
@@ -380,6 +381,7 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Läuft auf http://localhost:${PORT} (Instagram-Modus: ${process.env.IG_MODE === 'live' ? 'LIVE' : 'Test'})`);
+  media.start(UPLOAD_DIR, Number(process.env.MEDIA_PORT) || 3001);
   setInterval(() => { autopilot(); tick(); }, TICK_MS);
   kick();
 });
