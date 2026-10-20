@@ -191,7 +191,7 @@ setInterval(() => { if (!editing) load(); }, 5000);
 
 // ---------- Wochenplan ----------
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
-const DAY_NAMES = { 1: 'Montag', 2: 'Dienstag', 3: 'Mittwoch', 4: 'Donnerstag', 5: 'Freitag', 6: 'Samstag', 0: 'Sonntag' };
+const DAY_NAMES = { 1: 'Montags', 2: 'Dienstags', 3: 'Mittwochs', 4: 'Donnerstags', 5: 'Freitags', 6: 'Samstags', 0: 'Sonntags' };
 const daysEl = document.getElementById('days');
 const planForm = document.getElementById('planForm');
 const enabledEl = document.getElementById('enabled');

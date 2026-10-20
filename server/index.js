@@ -195,6 +195,17 @@ function autopilot() {
 
 // ---------- Routen ----------
 const app = express();
+// Fehlersuche: mit DEBUG_REQUESTS=1 wird jede Anfrage mit Dauer protokolliert
+if (process.env.DEBUG_REQUESTS === '1') {
+  app.use((req, res, next) => {
+    const t = Date.now();
+    res.on('close', () => {
+      const ms = Date.now() - t;
+      console.log(`${new Date().toLocaleTimeString('de-DE')} ${req.ip} ${req.method} ${req.url} ${res.writableFinished ? res.statusCode : 'ABGEBROCHEN'} ${ms}ms`);
+    });
+    next();
+  });
+}
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 // Instagram muss das Video über diese öffentliche URL abholen können
