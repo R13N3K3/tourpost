@@ -34,6 +34,8 @@ Der Nutzer muss nicht jedes Mal daran erinnern.
 
 - **Telegram-Bot**: Liefert Status-Updates zu Uploads (Vorrat → wird gepostet → erfolgreich/fehlgeschlagen, Links zu den Beiträgen) und andere Kennzahlen wie Likes und Views pro Video und Plattform. Kennzahlen müssen dafür per API der Plattformen abgefragt werden (Instagram Insights, YouTube Data/Analytics API, TikTok API). Kann die bestehenden ntfy-Benachrichtigungen (`server/notify.js`) ergänzen oder ersetzen. Bot-Token und Chat-ID kommen in die `.env`, nie ins Repo.
 
+- **Schlüssel beschaffen und testen** (Anleitung steht in der `README.md` unter „Wo bekomme ich die Schlüssel her, und wie teste ich?", ist noch **ungeprüft**): Die Schritte für Instagram (Meta-App, Token, `IG_USER_ID`, Cloudflare Tunnel), YouTube (Google OAuth) und TikTok (Developer-Portal, Sandbox, Audit) mit der aktuellen Doku abgleichen und beim ersten Durchlauf korrigieren. Jeweils zuerst `…_MODE=test`, dann Live-Test mit einem Wegwerf-Video (die Duplikatsperre sperrt es danach). Der Nutzer sollte die Konten selbst anlegen, Claude gibt keine Zugangsdaten aus.
+
 ## Regeln
 
 - **Keine Zugangsdaten** (`.env`, Tokens, SSH-Schlüssel) committen oder im Chat ausgeben.

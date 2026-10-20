@@ -42,6 +42,28 @@ Alle Zugangsdaten stehen in der Datei **`.env`** im Projektordner (`./setup.sh` 
 
 Zum Ausprobieren erst mit `IG_MODE=test` testen und erst dann auf `live` stellen. Die `.env` enthält Geheimnisse und ist per `.gitignore` vom Repository ausgeschlossen. Nie weitergeben oder committen.
 
+### Wo bekomme ich die Schlüssel her, und wie teste ich?
+
+> **Todo / ungeprüft:** Die Schritte unten stammen aus der Plattform-Dokumentation bzw. dem Kenntnisstand und sind noch nicht mit echten Konten durchgespielt. Menüs und Regeln der Plattformen ändern sich, im Zweifel die aktuelle Doku prüfen. Vorher überall `…_MODE=test` lassen.
+
+**Instagram** (Code vorhanden, noch nie live getestet)
+- Konto auf **Business oder Creator** umstellen und mit einer **Facebook-Seite** verbinden.
+- Unter [developers.facebook.com](https://developers.facebook.com) eine App anlegen (Typ „Business") und die Berechtigungen `instagram_basic`, `instagram_content_publish`, `pages_show_list` und `pages_read_engagement` anfordern.
+- Im **Graph API Explorer** ein Zugriffstoken erzeugen und gegen ein **langlebiges Token** (ca. 60 Tage) tauschen. Das ist `IG_ACCESS_TOKEN`. Es läuft ab und muss rechtzeitig erneuert werden.
+- `IG_USER_ID`: im Explorer `me/accounts` abfragen, dann bei der Seite `?fields=instagram_business_account` anhängen. Die `id` darin ist die Instagram-Konto-ID.
+- `PUBLIC_BASE_URL`: Instagram lädt das Video von einer öffentlichen HTTPS-Adresse. Dafür einen Cloudflare Tunnel auf Port 3000 einrichten. Vorher den Zugangsschutz einbauen.
+- **Testen:** (1) Adresse prüfen: `curl <PUBLIC_BASE_URL>/api/status` muss antworten. (2) Token prüfen: `curl "https://graph.facebook.com/me?access_token=<TOKEN>"` muss eine ID liefern. (3) `IG_MODE=live` setzen und **ein kurzes Wegwerf-Video** nur für Instagram posten (Hochformat 9:16, MP4, über 3 Sekunden), danach das Reel auf Instagram wieder löschen. Achtung: Die Duplikatsperre merkt sich dieses Video, es lässt sich nicht noch einmal hochladen.
+
+**YouTube** (noch nicht angebunden)
+- In der [Google Cloud Console](https://console.cloud.google.com) ein Projekt anlegen, die **YouTube Data API v3** aktivieren, den OAuth-Zustimmungsbildschirm einrichten und eine **OAuth-Client-ID** (Typ „Webanwendung") erstellen. Daraus kommen Client-ID und Client-Secret, dazu ein **Refresh-Token** nach einmaliger Anmeldung im Browser.
+- Der Testmodus des Zustimmungsbildschirms lässt das Token nach 7 Tagen ablaufen, deshalb auf „In Produktion" stellen. Uploads aus nicht geprüften Projekten werden zunächst **privat** gesetzt, dafür gibt es ein Google-Prüfformular.
+- **Testen:** Erst mit einem Wegwerf-Video und Datenschutz „privat" hochladen und im YouTube Studio prüfen, ob es als Short erkannt wird (hochkant, höchstens 3 Minuten). Das Tageskontingent (10.000 Einheiten, ein Upload ca. 1.600) reicht für 1–2 Videos pro Woche.
+
+**TikTok** (noch nicht angebunden)
+- Auf [developers.tiktok.com](https://developers.tiktok.com) eine App anlegen, die Produkte **Login Kit** und **Content Posting API** hinzufügen. Daraus kommen Client Key und Client Secret, dazu ein Token über die Anmeldung im Browser.
+- Ohne bestandenes **App-Audit** sind Direct-Post-Videos nur **privat** sichtbar. Als Alternative gibt es den **Upload als Entwurf**: Das Video landet im TikTok-Postfach und wird dort per Tipp veröffentlicht.
+- **Testen:** Zuerst im **Sandbox-Modus** der App mit dem eigenen Testkonto, dann Entwurf-Upload, erst nach dem Audit Direct Post.
+
 ## Vorschau
 
 <table>
