@@ -36,7 +36,7 @@ Der Nutzer muss nicht jedes Mal daran erinnern.
 
 - **Schlüssel beschaffen und testen** (Anleitung steht in der `README.md` unter „Wo bekomme ich die Schlüssel her, und wie teste ich?", ist noch **ungeprüft**): Die Schritte für Instagram (Meta-App mit Instagram-Login, Token, `IG_USER_ID`, Cloudflare Tunnel), YouTube (Google OAuth) und TikTok (Developer-Portal, Sandbox, Audit) mit der aktuellen Doku abgleichen und beim ersten Durchlauf korrigieren. Jeweils zuerst `…_MODE=test`, dann Live-Test mit einem Wegwerf-Video (die Duplikatsperre sperrt es danach). Der Nutzer sollte die Konten selbst anlegen, Claude gibt keine Zugangsdaten aus.
 
-- **Instagram-Token automatisch verlängern**: Das Token läuft nach ca. 60 Tagen ab. Nach der Doku (ungeprüft) lässt sich ein langlebiges Instagram-Token verlängern mit `GET https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=<TOKEN>` (Token muss mindestens 24 Stunden alt und noch gültig sein, die Antwort enthält ein neues 60-Tage-Token). Der Server soll das selbst regelmäßig tun (z. B. alle 30 Tage), das neue Token speichern (`.env` bzw. `data/`, nie ins Repo), das Ablaufdatum merken und per ntfy/Telegram warnen, wenn die Verlängerung fehlschlägt oder das Token bald abläuft.
+- **Instagram-Token-Verlängerung live prüfen**: `server/igtoken.js` verlängert das Token automatisch (nach der Doku `refresh_access_token`, ungeprüft, nur gegen eine Attrappe getestet). Beim ersten Live-Lauf kontrollieren, dass `data/igtoken.json` ein Ablaufdatum bekommt und die `.env` ein neues Token enthält.
 
 ## Nachricht an den Kumpel (Instagram-Zugang)
 
@@ -56,7 +56,7 @@ Zum Weiterschicken, wenn der Nutzer das Token braucht:
 >
 > **Das schickst du mir:** nur das Token. Bitte nicht in einen normalen Chat schreiben. Besser persönlich geben oder über einen Passwortmanager teilen. Wer das Token hat, kann auf deinem Konto Reels posten, deshalb gib es nur mir.
 >
-> Das Token läuft nach ca. 60 Tagen ab, dann müssten wir es einmal neu erzeugen. Wenn du bei einem Schritt etwas anderes siehst als hier steht, schick mir einen Screenshot (ohne das Token!).
+> Du musst das nur einmal machen: Die App verlängert das Token danach selbst. Nur wenn der Server länger als ca. 60 Tage aus war, müsstest du es einmal neu erzeugen. Wenn du bei einem Schritt etwas anderes siehst als hier steht, schick mir einen Screenshot (ohne das Token!).
 
 Das Token trägt der Nutzer selbst in die `.env` ein und schickt es nie in den Chat.
 

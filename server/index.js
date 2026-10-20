@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { publishReel } = require('./instagram');
 const { publishShort } = require('./youtube');
 const media = require('./media');
+const igToken = require('./igtoken');
 const { publishTikTok } = require('./tiktok');
 const queue = require('./queue');
 const log = require('./log');
@@ -298,6 +299,7 @@ app.get('/api/status', (req, res) => {
     next: next ? next.toISOString() : null,
     runwayEnd: runway(count)?.toISOString() || null,
     notifyConfigured: !!process.env.NTFY_TOPIC,
+    igToken: igToken.info(),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   });
 });
@@ -382,6 +384,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Läuft auf http://localhost:${PORT} (Instagram-Modus: ${process.env.IG_MODE === 'live' ? 'LIVE' : 'Test'})`);
   media.start(UPLOAD_DIR, Number(process.env.MEDIA_PORT) || 3001);
+  igToken.start();
   setInterval(() => { autopilot(); tick(); }, TICK_MS);
   kick();
 });
