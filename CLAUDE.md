@@ -40,23 +40,23 @@ Der Nutzer muss nicht jedes Mal daran erinnern.
 
 ## Nachricht an den Kumpel (Instagram-Zugang)
 
-Zum Weiterschicken, wenn der Nutzer das Token braucht:
+Zum Weiterschicken, wenn der Nutzer das Token braucht. Lockerer Ton ist gewollt. `<DEINE-MAIL>` vor dem Senden durch die Mailadresse des Nutzers ersetzen (steht absichtlich nicht im öffentlichen Repo).
 
-> Hey, ich brauche von dir einmalig einen Zugang, damit die App deine Reels auf Instagram posten kann. Dauert ca. 15–20 Minuten. Ein Passwort brauche ich nicht, nur am Ende ein „Token".
+> hey, wegen instagram brauch ich einmal nen zugang von dir damit die app deine reels posten kann. dauert so 15-20 min und n passwort brauch ich nicht, nur am ende nen "token"
 >
-> **Das brauchst du:** dein Instagram-Konto (Creator/Business, hast du ja) und ein normales Facebook-Profil, nur zum Anmelden bei Meta. Eine Facebook-Seite brauchst du nicht.
+> du brauchst dafür n normales facebook profil (nur zum anmelden bei meta, ne facebook seite brauchst du nicht)
 >
-> **Schritte** (die Menünamen bei Meta ändern sich manchmal, dann sinngemäß suchen):
+> 1. geh auf developers.facebook.com und melde dich mit facebook an, registrier dich als entwickler (kann sein dass er nach handynummer oder mail fragt)
+> 2. "App erstellen", typ Business, name egal z.b. TourPost
+> 3. füg "Instagram API mit Instagram-Login" hinzu
+> 4. bei App-Rollen → Rollen dein instagram konto als Instagram-Tester eintragen, dann in der insta app die einladung annehmen (einstellungen → apps und websites → tester-einladungen)
+> 5. im dashboard bei der instagram einrichtung ein token generieren. wichtig: instagram_business_basic und instagram_business_content_publish müssen dabei sein
 >
-> 1. Auf **developers.facebook.com** mit dem Facebook-Login anmelden und dich als Entwickler registrieren. Meta fragt dabei evtl. nach Telefonnummer oder E-Mail-Bestätigung.
-> 2. **„App erstellen"**, Typ **Business**, Name egal (z. B. „TourPost").
-> 3. Als Anwendungsfall bzw. Produkt **„Instagram API mit Instagram-Login"** hinzufügen.
-> 4. In der App unter **App-Rollen → Rollen** dein Instagram-Konto als **Instagram-Tester** hinzufügen. Danach in der Instagram-App die Einladung annehmen: **Einstellungen → Apps und Websites → Tester-Einladungen**.
-> 5. Im App-Dashboard bei der Instagram-Einrichtung für dein Konto ein **Token generieren**. Dabei müssen die Berechtigungen **instagram_business_basic** und **instagram_business_content_publish** dabei sein.
+> das token schickst du mir bitte per mail an <DEINE-MAIL> (nicht in den chat) und löschst die mail danach bei dir auch aus gesendet und papierkorb. wer das token hat kann auf deinem konto posten
 >
-> **Das schickst du mir:** nur das Token. Bitte nicht in einen normalen Chat schreiben. Besser persönlich geben oder über einen Passwortmanager teilen. Wer das Token hat, kann auf deinem Konto Reels posten, deshalb gib es nur mir.
+> musst du nur einmal machen, die app verlängert das token danach selber. wenn du bei nem schritt was anderes siehst als bei mir steht, schick mir n screenshot (aber ohne token)
 >
-> Du musst das nur einmal machen: Die App verlängert das Token danach selbst. Nur wenn der Server länger als ca. 60 Tage aus war, müsstest du es einmal neu erzeugen. Wenn du bei einem Schritt etwas anderes siehst als hier steht, schick mir einen Screenshot (ohne das Token!).
+> noch ne frage: hast du eigentlich auch schon nen youtube kanal und tiktok? wir machen erstmal nur instagram, aber dann weiß ich wie es danach weitergeht
 
 Das Token trägt der Nutzer selbst in die `.env` ein und schickt es nie in den Chat.
 
