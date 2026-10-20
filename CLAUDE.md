@@ -40,7 +40,7 @@ Der Nutzer muss nicht jedes Mal daran erinnern.
 
 - **Keine Zugangsdaten** (`.env`, Tokens, SSH-Schlüssel) committen oder im Chat ausgeben.
 - Ein Video darf nie zweimal gepostet werden: Duplikatsperre über den SHA-256-Hash und das Protokoll `data/log.jsonl` nicht umgehen oder abschwächen.
-- Die Live-Uploads für Instagram sind nach der Doku geschrieben, aber noch nicht mit einem echten Konto getestet. YouTube und TikTok laufen nur im Testmodus. Das nicht als „fertig" darstellen.
+- Die Live-Uploads für Instagram und YouTube sind nach der Doku geschrieben, aber noch nicht mit echten Konten getestet (YouTube nur gegen eine Attrappe geprüft). TikTok läuft nur im Testmodus. Das nicht als „fertig" darstellen.
 - Es gibt noch **keinen Zugangsschutz**. Den Server nicht ungeschützt ins Internet stellen.
 - Commit-Nachrichten auf Deutsch, am Ende die Co-Authored-By-Zeile der aktuellen Sitzung.
 - `text.html` im Projektordner ist eine alte Vorlage (Tailwind, anderes Design) und nicht Teil der App. Sie liegt aus dem ersten Commit im Repo. Nicht mit der App verwechseln und nicht ändern, löschen nur auf Wunsch des Nutzers.
