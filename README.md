@@ -16,8 +16,10 @@ npm start
 1. `./setup.sh` richtet alles ein und zeigt einen **QR-Code** für diesen Rechner.
 2. Mit der Handy-Kamera scannen. Die App öffnet sich im Browser.
 3. Optional „Zum Startbildschirm hinzufügen", dann startet sie wie eine App.
-4. „Video verteilen" → Video wählen, Titel, Text und Hashtags eintragen → Plattformen und Zeitpunkt wählen → „Absenden".
-5. Unter „Vorrat" siehst du alle geplanten Videos und kannst Titel, Text, Plattformen und Zeitpunkt ändern, ein Video sofort posten oder löschen.
+4. Unter **Vorrat** den **Wochenplan** einstellen: Wochentage und Uhrzeit wählen, „Automatisch aus dem Vorrat posten" einschalten, speichern.
+5. Unter **Video verteilen** Videos hochladen (Titel, Text, Hashtags, Plattformen) und **„In den Vorrat"** wählen.
+
+Ab jetzt postet der Server selbstständig: Zu jedem Termin des Wochenplans nimmt er das **älteste** Video aus dem Vorrat und veröffentlicht es. Du musst nur dafür sorgen, dass der Vorrat nicht leer läuft.
 
 Lädt die Seite nicht? Dann `./setup.sh --firewall` ausführen und prüfen, dass das Handy im selben WLAN ist (nicht Mobilfunk, kein Gast-WLAN). Weitere Option: `./setup.sh --service` startet den Server automatisch mit dem Rechner.
 
@@ -40,10 +42,24 @@ Lädt die Seite nicht? Dann `./setup.sh --firewall` ausführen und prüfen, dass
 
 ## So funktioniert's
 
-1. Video in der App wählen, Titel, Beschreibung und Hashtags eintragen, Plattformen wählen und festlegen, **wann** es veröffentlicht wird: sofort, zu einem Zeitpunkt oder nur als Entwurf im Vorrat.
-2. Der Server legt das Video im **Vorrat** ab. Alle 10 Sekunden prüft er, ob etwas fällig ist, und veröffentlicht **immer ein Video nach dem anderen**.
-3. Instagram holt das Video über eine öffentliche URL ab und veröffentlicht es als Reel (Graph API). YouTube und TikTok bekommen die Datei direkt vom Server.
-4. Nach erfolgreicher Veröffentlichung wird die Videodatei gelöscht.
+- **Vorrat:** Hochgeladene Videos warten auf dem Server. Die Reihenfolge ist „ältestes zuerst". Die App zeigt zu jedem Video den voraussichtlichen Termin und wie lange der Vorrat reicht.
+- **Wochenplan:** Pro Wochentag eine Uhrzeit (zum Beispiel Dienstag und Freitag um 18:00). Alle 10 Sekunden prüft der Server, ob ein Termin da ist, und veröffentlicht dann **ein** Video. Zeiten gelten in der Zeitzone des Servers. Verpasste Termine (Server war aus) holt er bis zu 12 Stunden später nach, ältere nicht.
+- **Weitere Optionen beim Hochladen:** „Zu einem festen Zeitpunkt" für ein einzelnes Video und „Sofort (zum Testen)".
+- **Veröffentlichen:** Instagram holt das Video über eine öffentliche URL ab und zeigt es als Reel (Graph API). YouTube und TikTok bekommen die Datei direkt vom Server. Danach wird die Videodatei gelöscht.
+
+### Benachrichtigungen
+
+Der Server meldet sich per Push aufs Handy, wenn
+- der Vorrat knapp wird (Schwelle einstellbar, Standard: 2 Videos oder weniger) oder leer ist,
+- ein Termin ohne Video bleibt,
+- eine Veröffentlichung fehlschlägt.
+
+Eingerichtet wird das mit [ntfy](https://ntfy.sh), einer kostenlosen App für Android und iPhone:
+1. ntfy-App installieren und ein **schwer erratbares Thema** abonnieren, zum Beispiel `tourpost-x7k2m9q4`.
+2. Dasselbe Thema in die `.env` eintragen: `NTFY_TOPIC=tourpost-x7k2m9q4`, Server neu starten.
+3. In der App unter „Vorrat" auf „Testnachricht" tippen.
+
+Wer das Thema kennt, kann mitlesen. Die Nachrichten enthalten Videotitel. Für mehr Privatsphäre gibt es einen eigenen ntfy-Server (`NTFY_SERVER`). Ohne `NTFY_TOPIC` zeigt die App die Warnung nur auf der Vorrat-Seite an.
 
 **Kein doppeltes Posten**
 - Jede Veröffentlichung wird dauerhaft in `data/log.jsonl` protokolliert (Zeit, Titel, Plattform, Ergebnis). Das Protokoll bleibt auch erhalten, wenn ein Video aus dem Vorrat gelöscht wird.
@@ -60,8 +76,9 @@ Die geheimen Zugangsdaten liegen nur auf dem Server (`.env`), nie in der App.
 ```
 setup.sh  Einrichtung auf einem neuen Rechner
 public/   App (HTML, CSS, JS, PWA) – Hauptmenü, Video-Seite, Pilztouren-Platzhalter
-server/   Express-Server, Planer, Vorrat (queue.js), Protokoll (log.js) und ein Modul pro Plattform (instagram.js, youtube.js, tiktok.js)
-data/     Vorrat und Protokoll (queue.json, log.jsonl), wird nicht ins Repo übernommen
+server/   Express-Server mit Planer und Wochenplan (schedule.js, settings.js), Vorrat (queue.js), Protokoll (log.js),
+          Benachrichtigung (notify.js) und ein Modul pro Plattform (instagram.js, youtube.js, tiktok.js)
+data/     Vorrat, Wochenplan und Protokoll (queue.json, settings.json, log.jsonl), nicht im Repo
 scripts/  Hilfsskripte (QR-Code)
 docs/     Screenshots für die README
 ```
@@ -78,13 +95,15 @@ Neue Unterseiten werden in `public/js/nav.js` eingetragen, neue Plattformen als 
 | `IG_USER_ID` | Instagram-Business-/Creator-User-ID |
 | `IG_ACCESS_TOKEN` | langlebiges Meta-Access-Token |
 | `PUBLIC_BASE_URL` | öffentliche HTTPS-Adresse des Servers (z. B. Cloudflare Tunnel) |
+| `NTFY_TOPIC` | ntfy-Thema für Push-Nachrichten (leer = aus) |
+| `NTFY_SERVER` | eigener ntfy-Server, Standard `https://ntfy.sh` |
 | `PORT` | Port, Standard 3000 |
 
 Für den Live-Modus braucht es ein Instagram-Business- oder Creator-Konto, eine Meta-Developer-App und eine öffentlich erreichbare HTTPS-URL, damit Instagram das Video abholen kann. Die `.env` gehört nie ins Repo (steht in der `.gitignore`).
 
 ## Status
 
-Prototyp. Alle drei Plattformen laufen im Testmodus (Upload, Vorrat mit Zeitplan, Status pro Plattform, Protokoll, Duplikatschutz). Live ist bisher nur Instagram programmiert, aber noch nicht mit einem echten Konto getestet. YouTube (Google-Login) und TikTok (Login, App-Prüfung) sind noch nicht angebunden. Es gibt noch keinen Zugangsschutz – den Server nicht ungeschützt ins Internet stellen.
+Prototyp. Alle drei Plattformen laufen im Testmodus (Upload, Vorrat, Wochenplan mit Autopilot, Status pro Plattform, Protokoll, Duplikatschutz, Warnungen). Live ist bisher nur Instagram programmiert, aber noch nicht mit einem echten Konto getestet. YouTube (Google-Login) und TikTok (Login, App-Prüfung) sind noch nicht angebunden. Es gibt noch keinen Zugangsschutz – den Server nicht ungeschützt ins Internet stellen.
 
 ## Geplant
 

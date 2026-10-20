@@ -115,8 +115,8 @@ form.addEventListener('submit', async (e) => {
     } else {
       const text = when === 'schedule'
         ? `Geplant für ${new Date(item.scheduledAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })} ✓`
-        : 'Im Vorrat gespeichert ✓';
-      setStatus(`${text}\nZum Ändern: Menüpunkt „Vorrat".`, 'ok');
+        : 'Im Vorrat gespeichert ✓\nWird automatisch nach dem Wochenplan gepostet.';
+      setStatus(`${text}\nZeiten und Reihenfolge siehst du unter „Vorrat".`, 'ok');
     }
   } catch (err) {
     setProgress(null);

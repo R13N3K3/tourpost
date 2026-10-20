@@ -5,7 +5,7 @@ const logEl = document.getElementById('log');
 
 const PLATFORMS = { instagram: 'Instagram Reel', youtube: 'YouTube Short', tiktok: 'TikTok' };
 const STATUS = {
-  draft: ['Entwurf', ''], queued: ['Geplant', 'info'], running: ['Läuft', 'warn'],
+  draft: ['Im Vorrat', ''], queued: ['Geplant', 'info'], running: ['Läuft', 'warn'],
   done: ['Fertig', 'ok'], error: ['Fehler', 'err'],
 };
 const RANK = { running: 0, queued: 1, error: 2, draft: 3, done: 4 };
@@ -52,7 +52,7 @@ function editForm(it) {
       <div class="field"><label>Wann veröffentlichen?</label>
         <select name="when">
           <option value="schedule" ${when === 'schedule' ? 'selected' : ''}>Zu einem Zeitpunkt</option>
-          <option value="draft" ${when === 'draft' ? 'selected' : ''}>Nur im Vorrat lassen</option>
+          <option value="draft" ${when === 'draft' ? 'selected' : ''}>Im Vorrat lassen (Wochenplan)</option>
         </select></div>
       <div class="field ${when === 'draft' ? 'hidden' : ''}" data-when-box><label>Datum und Uhrzeit</label>
         <input type="datetime-local" name="scheduledAt" value="${toLocalInput(it.scheduledAt)}"></div>
@@ -69,7 +69,7 @@ function card(it) {
     `<div class="${s.state === 'error' ? 'err' : ''}">${ICONS[s.state]} ${esc(s.name)}: ${esc(s.text)}</div>`).join('');
   const editable = it.status !== 'running' && it.status !== 'done';
   const when = it.status === 'done' ? `Veröffentlicht ${fmt(it.finishedAt)}`
-    : it.status === 'draft' ? 'Kein Termin' : fmt(it.scheduledAt);
+    : it.status === 'draft' ? (it.eta ? `Voraussichtlich ${fmt(it.eta)}` : 'Wartet auf den Wochenplan') : fmt(it.scheduledAt);
 
   return `
     <article class="card item" data-id="${it.id}">
@@ -187,3 +187,94 @@ listEl.addEventListener('submit', async (e) => {
 load();
 // laufende und geplante Videos regelmäßig aktualisieren, aber keine Eingabe überschreiben
 setInterval(() => { if (!editing) load(); }, 5000);
+
+
+// ---------- Wochenplan ----------
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+const DAY_NAMES = { 1: 'Montag', 2: 'Dienstag', 3: 'Mittwoch', 4: 'Donnerstag', 5: 'Freitag', 6: 'Samstag', 0: 'Sonntag' };
+const daysEl = document.getElementById('days');
+const planForm = document.getElementById('planForm');
+const enabledEl = document.getElementById('enabled');
+const lowStockEl = document.getElementById('lowStock');
+const planStatus = document.getElementById('planStatus');
+const stockInfo = document.getElementById('stockInfo');
+const banner = document.getElementById('banner');
+
+function setPlanStatus(text, type = '') {
+  planStatus.textContent = text;
+  planStatus.className = 'status ' + type;
+}
+
+function renderDays(slots) {
+  daysEl.innerHTML = DAY_ORDER.map(d => {
+    const slot = slots.find(x => x.day === d);
+    return `
+      <div class="day">
+        <label><input type="checkbox" data-day="${d}" ${slot ? 'checked' : ''}><span>${DAY_NAMES[d]}</span></label>
+        <input type="time" data-time="${d}" value="${slot ? slot.time : '18:00'}" ${slot ? '' : 'disabled'}>
+      </div>`;
+  }).join('');
+}
+
+daysEl.addEventListener('change', (e) => {
+  if (e.target.dataset.day === undefined) return;
+  daysEl.querySelector(`[data-time="${e.target.dataset.day}"]`).disabled = !e.target.checked;
+});
+
+async function loadPlan() {
+  try {
+    const s = await api('GET', '/api/settings');
+    enabledEl.checked = s.enabled;
+    lowStockEl.value = s.lowStock;
+    renderDays(s.slots);
+  } catch {
+    setPlanStatus('Einstellungen konnten nicht geladen werden.', 'error');
+  }
+}
+
+async function loadStatus() {
+  try {
+    const st = await api('GET', '/api/status');
+    const n = st.stock;
+    const parts = [`Im Vorrat: ${n} ${n === 1 ? 'Video' : 'Videos'}`];
+    if (st.next) parts.push(`nächster Termin: ${fmt(st.next)}`);
+    if (st.runwayEnd) parts.push(`reicht bis ${fmt(st.runwayEnd)}`);
+    stockInfo.textContent = parts.join(' · ') + (st.enabled ? '' : ' · Wochenplan ist aus');
+
+    banner.classList.toggle('hidden', !st.low);
+    if (st.low) {
+      banner.textContent = (n === 0 ? 'Der Vorrat ist leer.' : `Nur noch ${n} ${n === 1 ? 'Video' : 'Videos'} im Vorrat.`)
+        + ' Bitte neue Videos hinzufügen.'
+        + (st.notifyConfigured ? '' : ' Push-Nachrichten sind noch nicht eingerichtet (NTFY_TOPIC in der .env).');
+    }
+    document.getElementById('tzInfo').textContent = `Zeiten gelten in der Zeitzone des Servers (${st.timezone}).`;
+  } catch {}
+}
+
+planForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const slots = [...daysEl.querySelectorAll('[data-day]')].filter(c => c.checked).map(c => ({
+    day: Number(c.dataset.day),
+    time: daysEl.querySelector(`[data-time="${c.dataset.day}"]`).value,
+  }));
+  try {
+    await api('PUT', '/api/settings', { enabled: enabledEl.checked, slots, lowStock: Number(lowStockEl.value) });
+    setPlanStatus('Gespeichert ✓', 'ok');
+    await Promise.all([loadPlan(), loadStatus(), load()]);
+  } catch (err) {
+    setPlanStatus(err.message, 'error');
+  }
+});
+
+document.getElementById('notifyTest').addEventListener('click', async () => {
+  try {
+    const r = await api('POST', '/api/notify-test');
+    setPlanStatus(r.sent ? 'Testnachricht gesendet ✓' : `Nicht gesendet: ${r.reason}`, r.sent ? 'ok' : 'error');
+  } catch (err) {
+    setPlanStatus(err.message, 'error');
+  }
+});
+
+loadPlan();
+loadStatus();
+setInterval(loadStatus, 5000);

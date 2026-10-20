@@ -17,6 +17,27 @@
 <body>
   <header class="topbar"><h1>Vorrat &amp; Planung</h1></header>
   <main>
+    <section class="card" id="planCard">
+      <h2 class="section-title">Wochenplan</h2>
+      <p class="hint" id="stockInfo">Wird geladen …</p>
+      <div class="banner hidden" id="banner"></div>
+
+      <form id="planForm">
+        <label class="switch"><input type="checkbox" id="enabled"><span>Automatisch aus dem Vorrat posten</span></label>
+        <div id="days"></div>
+        <div class="field">
+          <label for="lowStock">Warnen, wenn nur noch so viele Videos im Vorrat sind</label>
+          <input type="number" id="lowStock" min="0" max="50" value="2">
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn small">Speichern</button>
+          <button type="button" class="btn small ghost" id="notifyTest">Testnachricht</button>
+        </div>
+        <p class="status" id="planStatus"></p>
+        <p class="hint" id="tzInfo"></p>
+      </form>
+    </section>
+
     <div id="list"></div>
     <p class="empty hidden" id="empty">Noch nichts im Vorrat.<br><a href="video.html">Video hinzufügen</a></p>
     <p class="status error" id="error"></p>

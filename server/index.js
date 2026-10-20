@@ -8,6 +8,9 @@ const { publishShort } = require('./youtube');
 const { publishTikTok } = require('./tiktok');
 const queue = require('./queue');
 const log = require('./log');
+const settings = require('./settings');
+const { notify } = require('./notify');
+const { lastOccurrence, upcoming } = require('./schedule');
 
 // einfache .env-Unterstützung ohne Zusatzpaket
 const envFile = path.join(__dirname, '..', '.env');
@@ -22,6 +25,7 @@ const PORT = process.env.PORT || 3000;
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
 const MAX_MB = 500;
 const TICK_MS = 10_000;
+const CATCHUP_MS = 12 * 3600e3;   // verpasste Wochentermine nur bis zu 12 Stunden nachholen
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const upload = multer({
@@ -100,6 +104,12 @@ async function runItem(item) {
     fs.unlink(filePath, () => {});   // Video wird nach dem Veröffentlichen nicht mehr gebraucht
   }
   queue.save();
+
+  if (!allDone) {
+    const failed = item.platforms.filter(p => item.steps[p].state === 'error')
+      .map(p => `${NAMES[p]}: ${item.steps[p].text}`).join(' | ');
+    notify({ title: 'Veröffentlichung fehlgeschlagen', message: `${item.title || item.originalName} – ${failed}`, priority: 4, tags: ['x'] });
+  }
 }
 
 async function tick() {
@@ -128,6 +138,60 @@ for (const item of queue.raw()) {
   }
 }
 queue.save();
+
+// ---------- Wochenplan (Autopilot) ----------
+const drafts = () => queue.raw().filter(i => i.status === 'draft')
+  .sort((a, b) => a.createdAt.localeCompare(b.createdAt));   // ältestes Video zuerst
+const fmtDay = d => d.toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+// Zeitpunkt, an dem das letzte Video im Vorrat rausgeht
+function runway(count) {
+  const s = settings.get();
+  if (!s.enabled || !s.slots.length || !count) return null;
+  return upcoming(s.slots, new Date(), count).pop() || null;
+}
+
+// warnt einmal pro Bestand, wenn das Vorrat knapp wird oder leer ist
+function checkStock() {
+  const s = settings.get();
+  if (!s.enabled) return;
+  const count = drafts().length;
+  if (count > s.lowStock) {
+    if (s.state.lowNotified !== null) settings.setState({ lowNotified: null });
+    return;
+  }
+  if (s.state.lowNotified === count) return;
+  settings.setState({ lowNotified: count });
+  const end = runway(count);
+  notify(count === 0
+    ? { title: 'Vorrat leer', message: 'Es sind keine Videos mehr im Vorrat. Beim nächsten Termin wird nichts gepostet.', priority: 4, tags: ['warning'] }
+    : { title: 'Vorrat fast leer', message: `Nur noch ${count} ${count === 1 ? 'Video' : 'Videos'} im Vorrat${end ? ` – reicht bis ${fmtDay(end)}` : ''}.`, priority: 3, tags: ['warning'] });
+}
+
+function autopilot() {
+  const s = settings.get();
+  if (!s.enabled || !s.slots.length) return;
+
+  const now = new Date();
+  const due = s.slots.map(sl => lastOccurrence(sl, now)).sort((a, b) => b - a)[0];
+  const handled = s.state.lastHandled ? new Date(s.state.lastHandled) : null;
+  if (!handled || due > handled) {
+    settings.setState({ lastHandled: due.toISOString() });
+    if (handled && now - due <= CATCHUP_MS) {
+      const next = drafts()[0];
+      if (next) {
+        next.scheduledAt = now.toISOString();
+        next.status = 'queued';
+        next.auto = true;
+        queue.save();
+        kick();
+      } else {
+        notify({ title: 'Termin ohne Video', message: `Für ${fmtDay(due)} war kein Video im Vorrat.`, priority: 4, tags: ['warning'] });
+      }
+    }
+  }
+  checkStock();
+}
 
 // ---------- Routen ----------
 const app = express();
@@ -190,7 +254,45 @@ app.post('/api/videos', upload.single('video'), async (req, res) => {
   res.json(queue.view(item));
 });
 
-app.get('/api/queue', (req, res) => res.json(queue.all()));
+app.get('/api/queue', (req, res) => {
+  const s = settings.get();
+  const ds = drafts();
+  const etas = s.enabled && s.slots.length ? upcoming(s.slots, new Date(), ds.length) : [];
+  const eta = new Map(ds.map((d, i) => [d.id, etas[i]?.toISOString()]));
+  res.json(queue.all().map(i => (eta.has(i.id) ? { ...i, eta: eta.get(i.id) } : i)));
+});
+
+app.get('/api/settings', (req, res) => res.json(settings.user()));
+
+app.put('/api/settings', (req, res) => {
+  const r = settings.validate(req.body || {});
+  if (r.error) return res.status(400).json({ error: r.error });
+  settings.update(r.value);
+  // Beim Speichern gilt der Plan ab jetzt – vergangene Termine von heute werden nicht rückwirkend ausgelöst
+  if (r.value.enabled) settings.setState({ lastHandled: new Date().toISOString(), lowNotified: null });
+  checkStock();
+  res.json(settings.user());
+});
+
+app.get('/api/status', (req, res) => {
+  const s = settings.get();
+  const count = drafts().length;
+  const next = s.enabled && s.slots.length ? upcoming(s.slots, new Date(), 1)[0] : null;
+  res.json({
+    enabled: s.enabled,
+    stock: count,
+    lowStock: s.lowStock,
+    low: s.enabled && count <= s.lowStock,
+    next: next ? next.toISOString() : null,
+    runwayEnd: runway(count)?.toISOString() || null,
+    notifyConfigured: !!process.env.NTFY_TOPIC,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
+});
+
+app.post('/api/notify-test', async (req, res) => {
+  res.json(await notify({ title: 'TourPost', message: 'Testnachricht: Benachrichtigungen funktionieren.', tags: ['white_check_mark'] }));
+});
 
 app.get('/api/log', (req, res) => {
   res.json(log.all().reverse().slice(0, 50).map(({ hash, ...rest }) => rest));
@@ -267,6 +369,6 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Läuft auf http://localhost:${PORT} (Instagram-Modus: ${process.env.IG_MODE === 'live' ? 'LIVE' : 'Test'})`);
-  setInterval(tick, TICK_MS);
+  setInterval(() => { autopilot(); tick(); }, TICK_MS);
   kick();
 });
