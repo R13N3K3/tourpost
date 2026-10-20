@@ -36,6 +36,30 @@ Der Nutzer muss nicht jedes Mal daran erinnern.
 
 - **Schlüssel beschaffen und testen** (Anleitung steht in der `README.md` unter „Wo bekomme ich die Schlüssel her, und wie teste ich?", ist noch **ungeprüft**): Die Schritte für Instagram (Meta-App mit Instagram-Login, Token, `IG_USER_ID`, Cloudflare Tunnel), YouTube (Google OAuth) und TikTok (Developer-Portal, Sandbox, Audit) mit der aktuellen Doku abgleichen und beim ersten Durchlauf korrigieren. Jeweils zuerst `…_MODE=test`, dann Live-Test mit einem Wegwerf-Video (die Duplikatsperre sperrt es danach). Der Nutzer sollte die Konten selbst anlegen, Claude gibt keine Zugangsdaten aus.
 
+- **Instagram-Token automatisch verlängern**: Das Token läuft nach ca. 60 Tagen ab. Nach der Doku (ungeprüft) lässt sich ein langlebiges Instagram-Token verlängern mit `GET https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=<TOKEN>` (Token muss mindestens 24 Stunden alt und noch gültig sein, die Antwort enthält ein neues 60-Tage-Token). Der Server soll das selbst regelmäßig tun (z. B. alle 30 Tage), das neue Token speichern (`.env` bzw. `data/`, nie ins Repo), das Ablaufdatum merken und per ntfy/Telegram warnen, wenn die Verlängerung fehlschlägt oder das Token bald abläuft.
+
+## Nachricht an den Kumpel (Instagram-Zugang)
+
+Zum Weiterschicken, wenn der Nutzer das Token braucht:
+
+> Hey, ich brauche von dir einmalig einen Zugang, damit die App deine Reels auf Instagram posten kann. Dauert ca. 15–20 Minuten. Ein Passwort brauche ich nicht, nur am Ende ein „Token".
+>
+> **Das brauchst du:** dein Instagram-Konto (Creator/Business, hast du ja) und ein normales Facebook-Profil, nur zum Anmelden bei Meta. Eine Facebook-Seite brauchst du nicht.
+>
+> **Schritte** (die Menünamen bei Meta ändern sich manchmal, dann sinngemäß suchen):
+>
+> 1. Auf **developers.facebook.com** mit dem Facebook-Login anmelden und dich als Entwickler registrieren. Meta fragt dabei evtl. nach Telefonnummer oder E-Mail-Bestätigung.
+> 2. **„App erstellen"**, Typ **Business**, Name egal (z. B. „TourPost").
+> 3. Als Anwendungsfall bzw. Produkt **„Instagram API mit Instagram-Login"** hinzufügen.
+> 4. In der App unter **App-Rollen → Rollen** dein Instagram-Konto als **Instagram-Tester** hinzufügen. Danach in der Instagram-App die Einladung annehmen: **Einstellungen → Apps und Websites → Tester-Einladungen**.
+> 5. Im App-Dashboard bei der Instagram-Einrichtung für dein Konto ein **Token generieren**. Dabei müssen die Berechtigungen **instagram_business_basic** und **instagram_business_content_publish** dabei sein.
+>
+> **Das schickst du mir:** nur das Token. Bitte nicht in einen normalen Chat schreiben. Besser persönlich geben oder über einen Passwortmanager teilen. Wer das Token hat, kann auf deinem Konto Reels posten, deshalb gib es nur mir.
+>
+> Das Token läuft nach ca. 60 Tagen ab, dann müssten wir es einmal neu erzeugen. Wenn du bei einem Schritt etwas anderes siehst als hier steht, schick mir einen Screenshot (ohne das Token!).
+
+Das Token trägt der Nutzer selbst in die `.env` ein und schickt es nie in den Chat.
+
 ## Regeln
 
 - **Keine Zugangsdaten** (`.env`, Tokens, SSH-Schlüssel) committen oder im Chat ausgeben.
