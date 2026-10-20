@@ -5,7 +5,8 @@ const path = require('path');
 
 const FILE = path.join(__dirname, '..', 'data', 'settings.json');
 
-let data = { enabled: false, slots: [], lowStock: 2, state: { lastHandled: null, lowNotified: null } };
+// Standardplan: Freitag und Sonntag um 12:00 (Schalter bleibt aus, bis er in der App eingeschaltet wird)
+let data = { enabled: false, slots: [{ day: 5, time: '12:00' }, { day: 0, time: '12:00' }], lowStock: 2, state: { lastHandled: null, lowNotified: null } };
 try { data = { ...data, ...JSON.parse(fs.readFileSync(FILE, 'utf8')) }; } catch {}
 data.state = { lastHandled: null, lowNotified: null, ...data.state };
 
