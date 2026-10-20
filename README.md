@@ -35,7 +35,7 @@ Alle Zugangsdaten stehen in der Datei **`.env`** im Projektordner (`./setup.sh` 
 |---|---|
 | `IG_MODE` | `test` = es wird nichts gepostet (simuliert), `live` = echter Instagram-Upload |
 | `IG_USER_ID` | Instagram-Konto-ID (Business- oder Creator-Konto) |
-| `IG_ACCESS_TOKEN` | Zugriffstoken aus der Meta-Developer-App |
+| `IG_ACCESS_TOKEN` | Instagram-Token aus der Meta-Developer-App (ca. 60 Tage gültig) |
 | `PUBLIC_BASE_URL` | Öffentliche HTTPS-Adresse des Servers (zum Beispiel Cloudflare Tunnel). Instagram lädt das Video von dort ab |
 | `YT_MODE` | `test` oder `live` für YouTube |
 | `YT_CLIENT_ID`, `YT_CLIENT_SECRET` | OAuth-Client aus der Google Cloud Console |
@@ -51,12 +51,14 @@ Zum Ausprobieren erst mit `IG_MODE=test` testen und erst dann auf `live` stellen
 > **Todo / ungeprüft:** Die Schritte unten stammen aus der Plattform-Dokumentation bzw. dem Kenntnisstand und sind noch nicht mit echten Konten durchgespielt. Menüs und Regeln der Plattformen ändern sich, im Zweifel die aktuelle Doku prüfen. Vorher überall `…_MODE=test` lassen.
 
 **Instagram** (Code vorhanden, noch nie live getestet)
-- Konto auf **Business oder Creator** umstellen und mit einer **Facebook-Seite** verbinden.
-- Unter [developers.facebook.com](https://developers.facebook.com) eine App anlegen (Typ „Business") und die Berechtigungen `instagram_basic`, `instagram_content_publish`, `pages_show_list` und `pages_read_engagement` anfordern.
-- Im **Graph API Explorer** ein Zugriffstoken erzeugen und gegen ein **langlebiges Token** (ca. 60 Tage) tauschen. Das ist `IG_ACCESS_TOKEN`. Es läuft ab und muss rechtzeitig erneuert werden.
-- `IG_USER_ID`: im Explorer `me/accounts` abfragen, dann bei der Seite `?fields=instagram_business_account` anhängen. Die `id` darin ist die Instagram-Konto-ID.
-- `PUBLIC_BASE_URL`: Instagram lädt das Video von einer öffentlichen HTTPS-Adresse. Dafür einen Cloudflare Tunnel auf Port 3000 einrichten. Vorher den Zugangsschutz einbauen.
-- **Testen:** (1) Adresse prüfen: `curl <PUBLIC_BASE_URL>/api/status` muss antworten. (2) Token prüfen: `curl "https://graph.facebook.com/me?access_token=<TOKEN>"` muss eine ID liefern. (3) `IG_MODE=live` setzen und **ein kurzes Wegwerf-Video** nur für Instagram posten (Hochformat 9:16, MP4, über 3 Sekunden), danach das Reel auf Instagram wieder löschen. Achtung: Die Duplikatsperre merkt sich dieses Video, es lässt sich nicht noch einmal hochladen.
+Läuft über die **Instagram API mit Instagram-Login**. Es wird **keine Facebook-Seite** gebraucht, das Konto muss nur **Creator oder Business** sein.
+1. Auf [developers.facebook.com](https://developers.facebook.com) eine **App** anlegen (Typ „Business") und den Anwendungsfall **„Instagram API mit Instagram-Login"** hinzufügen. Die Menünamen ändern sich bei Meta öfter, im Zweifel danach suchen.
+2. Das Instagram-Konto als **Instagram-Tester** der App hinzufügen und die Einladung in der Instagram-App annehmen (Einstellungen → Apps und Websites → Tester-Einladungen).
+3. Im App-Dashboard bei der Instagram-Einrichtung für dieses Konto ein **Token generieren**, mit der Berechtigung `instagram_business_content_publish` (zusätzlich `instagram_business_basic`). Das ist `IG_ACCESS_TOKEN` und gilt ca. 60 Tage. Vor Ablauf verlängern oder neu erzeugen.
+4. `IG_USER_ID` ist die Instagram-Konto-ID. Sie steht beim Token-Erzeugen im Dashboard oder kommt von: `curl "https://graph.instagram.com/v23.0/me?fields=user_id,username&access_token=<TOKEN>"` (Feld `user_id`).
+5. `PUBLIC_BASE_URL`: Instagram lädt das Video von einer öffentlichen HTTPS-Adresse. Dafür einen Cloudflare Tunnel auf den Server einrichten. Vorher den Zugangsschutz einbauen.
+- **Testen:** (1) Adresse prüfen: `curl <PUBLIC_BASE_URL>/api/status` muss antworten. (2) Token prüfen: der `curl` aus Schritt 4 muss `user_id` und `username` liefern. (3) `IG_MODE=live` setzen und **ein kurzes Wegwerf-Video** nur für Instagram posten (Hochformat 9:16, MP4, über 3 Sekunden), danach das Reel auf Instagram wieder löschen. Achtung: Die Duplikatsperre merkt sich dieses Video, es lässt sich nicht noch einmal hochladen.
+- Solange die Meta-App im Entwicklermodus ist, funktioniert sie nur für Konten, die als Tester eingetragen sind. Das reicht hier, ein App-Review ist nicht nötig.
 
 **YouTube** (Code vorhanden, noch nie live getestet)
 1. In der [Google Cloud Console](https://console.cloud.google.com) ein **Projekt** anlegen und unter „APIs & Dienste" die **YouTube Data API v3** aktivieren.
@@ -94,7 +96,7 @@ Zum Ausprobieren erst mit `IG_MODE=test` testen und erst dann auf `live` stellen
 - **Vorrat:** Hochgeladene Videos warten auf dem Server. Die Reihenfolge ist „ältestes zuerst". Die App zeigt zu jedem Video den voraussichtlichen Termin und wie lange der Vorrat reicht.
 - **Wochenplan:** Pro Wochentag eine Uhrzeit (zum Beispiel Dienstag und Freitag um 12:00). Alle 10 Sekunden prüft der Server, ob ein Termin da ist, und veröffentlicht dann **ein** Video. Zeiten gelten in der Zeitzone des Servers. Verpasste Termine (Server war aus) holt er bis zu 12 Stunden später nach, ältere nicht.
 - **Weitere Optionen beim Hochladen:** „Zu einem festen Zeitpunkt" für ein einzelnes Video und „Sofort (zum Testen)".
-- **Veröffentlichen:** Instagram holt das Video über eine öffentliche URL ab und zeigt es als Reel (Graph API). YouTube und TikTok bekommen die Datei direkt vom Server. Danach wird die Videodatei gelöscht.
+- **Veröffentlichen:** Instagram holt das Video über eine öffentliche URL ab und zeigt es als Reel (Instagram API). YouTube und TikTok bekommen die Datei direkt vom Server. Danach wird die Videodatei gelöscht.
 
 ### Benachrichtigungen
 

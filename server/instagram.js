@@ -1,6 +1,7 @@
-// Instagram-Modul: veröffentlicht ein Video als Reel über die Instagram Graph API.
+// Instagram-Modul: veröffentlicht ein Video als Reel über die Instagram API mit Instagram-Login
+// (graph.instagram.com, braucht keine Facebook-Seite).
 // IG_MODE=test simuliert alles, ohne etwas zu posten.
-const GRAPH = 'https://graph.facebook.com/v23.0';
+const GRAPH = 'https://graph.instagram.com/v23.0';
 
 const { sleep } = require('./util');
 
