@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 # TourPost – Einrichtung auf einem neuen Rechner.
-# Aufruf:  ./setup.sh [--firewall] [--service]
+# Aufruf:  ./setup.sh [--firewall] [--service] [--tunnel]
 #   --firewall  Port in ufw für das Heimnetz freigeben (braucht sudo)
 #   --service   Server als systemd-Benutzerdienst einrichten (startet automatisch)
+#   --tunnel    cloudflared installieren (öffentliche Adresse für Instagram, siehe README)
 set -euo pipefail
 
 cd "$(dirname "$0")"
 
 WANT_FIREWALL=0
 WANT_SERVICE=0
+WANT_TUNNEL=0
 for arg in "$@"; do
   case "$arg" in
     --firewall) WANT_FIREWALL=1 ;;
     --service)  WANT_SERVICE=1 ;;
+    --tunnel)   WANT_TUNNEL=1 ;;
     -h|--help)  sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unbekannte Option: $arg (siehe --help)"; exit 1 ;;
   esac
@@ -129,6 +132,37 @@ EOF
   fi
 fi
 
+# ---------- cloudflared (Tunnel) ----------
+if [ "$WANT_TUNNEL" = 1 ]; then
+  step "cloudflared (Tunnel für Instagram)"
+  if command -v cloudflared >/dev/null; then
+    ok "cloudflared ist schon installiert ($(cloudflared --version 2>&1 | head -1))"
+  elif command -v pacman >/dev/null; then
+    sudo pacman -S --needed --noconfirm cloudflared
+    ok "cloudflared installiert"
+  elif command -v brew >/dev/null; then
+    brew install cloudflared
+    ok "cloudflared installiert"
+  else
+    # sonst die fertige Datei ohne sudo nach ~/.local/bin laden
+    case "$(uname -m)" in
+      x86_64)  CF_ARCH=amd64 ;;
+      aarch64|arm64) CF_ARCH=arm64 ;;
+      *) CF_ARCH="" ;;
+    esac
+    if [ "$(uname -s)" = Linux ] && [ -n "$CF_ARCH" ] && command -v curl >/dev/null; then
+      mkdir -p "$HOME/.local/bin"
+      curl -fsSL -o "$HOME/.local/bin/cloudflared" \
+        "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$CF_ARCH"
+      chmod +x "$HOME/.local/bin/cloudflared"
+      ok "cloudflared nach ~/.local/bin installiert"
+      case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) warn "~/.local/bin ist nicht im PATH – neues Terminal öffnen oder PATH ergänzen." ;; esac
+    else
+      warn "Automatische Installation nicht möglich – siehe https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/"
+    fi
+  fi
+fi
+
 # ---------- Fertig ----------
 step "Fertig"
 if [ -n "$IP" ]; then
@@ -142,6 +176,9 @@ if [ "$WANT_SERVICE" = 0 ]; then
   echo "Server starten:   npm start"
 fi
 echo "Im Handy-Browser: $URL   (Handy im selben WLAN)"
+if [ "$WANT_TUNNEL" = 1 ]; then
+  echo "Tunnel für Instagram (nur den Medienserver, Port ${MEDIA_PORT:-3001}):  cloudflared tunnel --url http://127.0.0.1:${MEDIA_PORT:-3001}"
+fi
 
 if [ -n "$IP" ]; then
   echo

@@ -21,7 +21,7 @@ npm start
 
 Ab jetzt postet der Server selbstständig: Zu jedem Termin des Wochenplans nimmt er das **älteste** Video aus dem Vorrat und veröffentlicht es. Du musst nur dafür sorgen, dass der Vorrat nicht leer läuft.
 
-Lädt die Seite nicht? Dann `./setup.sh --firewall` ausführen und prüfen, dass das Handy im selben WLAN ist (nicht Mobilfunk, kein Gast-WLAN). Weitere Option: `./setup.sh --service` startet den Server automatisch mit dem Rechner.
+Lädt die Seite nicht? Dann `./setup.sh --firewall` ausführen und prüfen, dass das Handy im selben WLAN ist (nicht Mobilfunk, kein Gast-WLAN). Weitere Optionen: `./setup.sh --service` startet den Server automatisch mit dem Rechner, `./setup.sh --tunnel` installiert `cloudflared` (nur für Instagram nötig, siehe unten).
 
 ### API-Schlüssel eintragen
 
@@ -58,7 +58,7 @@ Läuft über die **Instagram API mit Instagram-Login**. Es wird **keine Facebook
 3. Im App-Dashboard bei der Instagram-Einrichtung für dieses Konto ein **Token generieren**, mit der Berechtigung `instagram_business_content_publish` (zusätzlich `instagram_business_basic`). Das ist `IG_ACCESS_TOKEN` und gilt ca. 60 Tage. Vor Ablauf verlängern oder neu erzeugen.
 4. `IG_USER_ID` ist die Instagram-Konto-ID. Sie steht beim Token-Erzeugen im Dashboard oder kommt von: `curl "https://graph.instagram.com/v23.0/me?fields=user_id,username&access_token=<TOKEN>"` (Feld `user_id`).
 5. `PUBLIC_BASE_URL`: Instagram holt das Video selbst von einer öffentlichen HTTPS-Adresse. Dafür läuft neben der App ein kleiner **Medienserver** (Port `MEDIA_PORT`, Standard 3001, nur lokal erreichbar), der ausschließlich `/media/<zufälliger-Dateiname>` ausliefert. **Nur diesen Port** durch einen Cloudflare Tunnel ins Internet stellen, nie die App (Port 3000). Der Tunnel braucht keine Portfreigabe im Router, weil er die Verbindung von deinem PC nach außen aufbaut.
-   - Zum Testen ohne Konto: `cloudflared tunnel --url http://127.0.0.1:3001` (Installation zum Beispiel `sudo pacman -S cloudflared`). Die ausgegebene `https://….trycloudflare.com`-Adresse als `PUBLIC_BASE_URL` in die `.env` eintragen und den Server neu starten. Die Adresse ändert sich bei jedem Start des Tunnels.
+   - Zum Testen ohne Konto: `cloudflared tunnel --url http://127.0.0.1:3001` (Installation mit `./setup.sh --tunnel`). Die ausgegebene `https://….trycloudflare.com`-Adresse als `PUBLIC_BASE_URL` in die `.env` eintragen und den Server neu starten. Die Adresse ändert sich bei jedem Start des Tunnels.
    - Für den Dauerbetrieb einen festen Tunnel mit kostenlosem Cloudflare-Konto und eigener Domain einrichten.
 - **Testen:** (1) Adresse prüfen: `<PUBLIC_BASE_URL>/media/test` muss „404“ liefern (der Tunnel erreicht den Medienserver), die App selbst (`<PUBLIC_BASE_URL>/api/status`) darf von außen **nicht** erreichbar sein. (2) Token prüfen: der `curl` aus Schritt 4 muss `user_id` und `username` liefern. (3) `IG_MODE=live` setzen und **ein kurzes Wegwerf-Video** nur für Instagram posten (Hochformat 9:16, MP4, über 3 Sekunden), danach das Reel auf Instagram wieder löschen. Achtung: Die Duplikatsperre merkt sich dieses Video, es lässt sich nicht noch einmal hochladen.
 - Solange die Meta-App im Entwicklermodus ist, funktioniert sie nur für Konten, die als Tester eingetragen sind. Das reicht hier, ein App-Review ist nicht nötig.
