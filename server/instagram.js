@@ -1,6 +1,6 @@
 // Instagram-Modul: veröffentlicht ein Video als Reel über die Instagram Graph API.
 // IG_MODE=test simuliert alles, ohne etwas zu posten.
-const GRAPH = 'https://graph.facebook.com/v21.0';
+const GRAPH = 'https://graph.facebook.com/v23.0';
 
 const { sleep } = require('./util');
 
@@ -11,7 +11,10 @@ async function graph(path, { method = 'GET', params = {} } = {}) {
     ? await fetch(url + '?' + body)
     : await fetch(url, { method, body });
   const json = await res.json();
-  if (json.error) throw new Error(json.error.message);
+  if (json.error) {
+    const e = json.error;
+    throw new Error(`Instagram: ${e.message}${e.error_user_msg ? ' – ' + e.error_user_msg : ''} (Code ${e.code}${e.error_subcode ? '/' + e.error_subcode : ''})`);
+  }
   return json;
 }
 
@@ -35,10 +38,10 @@ async function publishReel({ videoUrl, caption, onStatus }) {
 
   // Instagram verarbeitet das Video asynchron – bis zu ~5 Minuten warten
   for (let i = 0; i < 60; i++) {
-    const { status_code } = await graph(`/${container.id}`, { params: { fields: 'status_code' } });
+    const { status_code, status } = await graph(`/${container.id}`, { params: { fields: 'status_code,status' } });
     if (status_code === 'FINISHED') break;
     if (status_code === 'ERROR' || status_code === 'EXPIRED') {
-      throw new Error('Instagram konnte das Video nicht verarbeiten.');
+      throw new Error(`Instagram konnte das Video nicht verarbeiten (${status_code}${status ? ': ' + status : ''}).`);
     }
     onStatus('Instagram verarbeitet das Video …');
     await sleep(5000);
