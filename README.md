@@ -2,9 +2,9 @@
 
 Handy-Web-App, um ein Video von unterwegs automatisch auf Instagram (später YouTube, TikTok) zu veröffentlichen. Das Smartphone ist die Fernbedienung, ein kleiner Node-Server übernimmt den Upload.
 
-## Einrichtung
+## Einrichtung & Nutzung
 
-**Voraussetzungen:** Linux oder macOS mit `git` und `curl` sowie ein Handy im selben WLAN wie der Rechner. Node.js muss nicht vorhanden sein.
+Du brauchst Linux oder macOS mit `git` und `curl` und ein Handy im selben WLAN. Node.js wird bei Bedarf automatisch installiert.
 
 ```bash
 git clone https://github.com/R13N3K3/tourpost.git
@@ -13,26 +13,12 @@ cd tourpost
 npm start
 ```
 
-Das Skript `setup.sh` erledigt alles Nötige: Es prüft Node und installiert es bei Bedarf automatisch (Version 24 über [nvm](https://github.com/nvm-sh/nvm), nur im Home-Verzeichnis, ohne sudo). Es installiert die Abhängigkeiten, legt `uploads/` und eine `.env` an (im Testmodus, es wird nichts gepostet) und erzeugt am Ende für **diesen** Rechner einen QR-Code mit der passenden Adresse: im Terminal und als Bild `qr-lokal.png` im Projektordner (wird nicht ins Repo übernommen, weil er nur im jeweiligen Heimnetz gilt). Es ist gefahrlos mehrfach ausführbar und überschreibt eine vorhandene `.env` nie.
+1. `./setup.sh` richtet alles ein und zeigt einen **QR-Code** für diesen Rechner.
+2. Mit der Handy-Kamera scannen. Die App öffnet sich im Browser.
+3. Optional „Zum Startbildschirm hinzufügen", dann startet sie wie eine App.
+4. „Video verteilen" → Video wählen, Text und Hashtags eintragen → „Absenden".
 
-**Optionen**
-
-| Aufruf | Wirkung |
-|---|---|
-| `./setup.sh --firewall` | gibt den Port per `ufw` für dein Heimnetz frei (sonst blockiert die Firewall das Handy) |
-| `./setup.sh --service` | richtet einen systemd-Dienst ein, der Server startet dann automatisch |
-| `./setup.sh --firewall --service` | beides |
-
-## Nutzung
-
-1. Server läuft (`npm start` oder als Dienst).
-2. Auf dem Handy die vom Skript angezeigte Adresse öffnen, zum Beispiel `http://192.168.88.243:3000`, oder den QR-Code scannen, den `./setup.sh` am Ende anzeigt (das Bild liegt als `qr-lokal.png` im Projektordner). Ändert sich die IP des Rechners, `./setup.sh` einfach erneut ausführen.
-3. Im Browser „Zum Startbildschirm hinzufügen" wählen, dann startet die App wie eine normale App.
-4. „Video verteilen" öffnen, Video wählen, Beschreibung und Hashtags eintragen, „Absenden".
-
-Der Server lädt das Video hoch, Instagram holt es ab und veröffentlicht es als Reel. Im Testmodus wird das nur simuliert.
-
-**Wenn die Seite nicht lädt:** Handy im gleichen WLAN (nicht Mobilfunk, kein Gast-WLAN)? Firewall offen (`./setup.sh --firewall`)? Adresse mit `http://` statt `https://`?
+Lädt die Seite nicht? Dann `./setup.sh --firewall` ausführen und prüfen, dass das Handy im selben WLAN ist (nicht Mobilfunk, kein Gast-WLAN). Weitere Option: `./setup.sh --service` startet den Server automatisch mit dem Rechner.
 
 ## Vorschau
 
