@@ -60,6 +60,18 @@ Zum Weiterschicken, wenn der Nutzer das Token braucht:
 
 Das Token trägt der Nutzer selbst in die `.env` ein und schickt es nie in den Chat.
 
+## YouTube einrichten (Schritte für den Nutzer)
+
+Der Code ist fertig (`server/youtube.js`, `scripts/youtube-auth.js`), aber noch nicht live getestet. Das Video landet auf dem Kanal des Google-Kontos, mit dem man sich anmeldet. Zum Testen den eigenen Kanal nehmen.
+
+1. Auf console.cloud.google.com ein **Projekt** anlegen.
+2. „APIs & Dienste" → **YouTube Data API v3** aktivieren.
+3. **OAuth-Zustimmungsbildschirm** einrichten (Nutzertyp „Extern", Name und E-Mail frei) und das eigene Google-Konto als **Testnutzer** eintragen.
+4. „Anmeldedaten" → **OAuth-Client-ID** erstellen, Typ **Desktop-App**. Client-ID und Client-Secret in die `.env` als `YT_CLIENT_ID` und `YT_CLIENT_SECRET` eintragen (nie in den Chat).
+5. Auf dem PC `npm run youtube-auth` ausführen, den Link im Browser öffnen und anmelden (bei „nicht verifiziert": Erweitert → Weiter). Das Skript trägt `YT_REFRESH_TOKEN` in die `.env` ein.
+6. `YT_MODE=live` und `YT_PRIVACY=private` setzen, Server neu starten, ein Wegwerf-Video nur für YouTube posten („Sofort"), im YouTube Studio prüfen und danach löschen.
+7. Später: Zustimmungsbildschirm auf „In Produktion" stellen (sonst läuft das Token nach 7 Tagen ab). Uploads aus ungeprüften Projekten setzt Google auf privat, dafür gibt es ein Prüfformular.
+
 ## Regeln
 
 - **Keine Zugangsdaten** (`.env`, Tokens, SSH-Schlüssel) committen oder im Chat ausgeben.
