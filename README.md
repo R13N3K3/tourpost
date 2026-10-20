@@ -13,7 +13,7 @@ cd tourpost
 npm start
 ```
 
-Das Skript `setup.sh` erledigt alles Nötige: Es prüft Node und installiert es bei Bedarf automatisch (Version 24 über [nvm](https://github.com/nvm-sh/nvm), nur im Home-Verzeichnis, ohne sudo). Dann installiert die Abhängigkeiten, legt `uploads/` und eine `.env` an (im Testmodus, es wird nichts gepostet) und zeigt am Ende die Adresse und einen QR-Code an. Es ist gefahrlos mehrfach ausführbar und überschreibt eine vorhandene `.env` nie.
+Das Skript `setup.sh` erledigt alles Nötige: Es prüft Node und installiert es bei Bedarf automatisch (Version 24 über [nvm](https://github.com/nvm-sh/nvm), nur im Home-Verzeichnis, ohne sudo). Es installiert die Abhängigkeiten, legt `uploads/` und eine `.env` an (im Testmodus, es wird nichts gepostet) und erzeugt am Ende für **diesen** Rechner einen QR-Code mit der passenden Adresse: im Terminal und als Bild `qr-lokal.png` im Projektordner (wird nicht ins Repo übernommen, weil er nur im jeweiligen Heimnetz gilt). Es ist gefahrlos mehrfach ausführbar und überschreibt eine vorhandene `.env` nie.
 
 **Optionen**
 
@@ -23,12 +23,10 @@ Das Skript `setup.sh` erledigt alles Nötige: Es prüft Node und installiert es 
 | `./setup.sh --service` | richtet einen systemd-Dienst ein, der Server startet dann automatisch |
 | `./setup.sh --firewall --service` | beides |
 
-Für einen QR-Code im Terminal ist `qrencode` nötig (`sudo pacman -S qrencode` / `sudo apt install qrencode`). Ohne ihn läuft das Skript trotzdem.
-
 ## Nutzung
 
 1. Server läuft (`npm start` oder als Dienst).
-2. Auf dem Handy die vom Skript angezeigte Adresse öffnen, zum Beispiel `http://192.168.88.243:3000`, oder den QR-Code scannen.
+2. Auf dem Handy die vom Skript angezeigte Adresse öffnen, zum Beispiel `http://192.168.88.243:3000`, oder den QR-Code scannen, den `./setup.sh` am Ende anzeigt (das Bild liegt als `qr-lokal.png` im Projektordner). Ändert sich die IP des Rechners, `./setup.sh` einfach erneut ausführen.
 3. Im Browser „Zum Startbildschirm hinzufügen" wählen, dann startet die App wie eine normale App.
 4. „Video verteilen" öffnen, Video wählen, Beschreibung und Hashtags eintragen, „Absenden".
 
@@ -51,12 +49,6 @@ Der Server lädt das Video hoch, Instagram holt es ab und veröffentlicht es als
   </tr>
 </table>
 
-## Schnellzugriff im Heimnetz
-
-<img src="docs/qr-lokal.png" width="180" alt="QR-Code zu http://192.168.88.243:3000">
-
-`http://192.168.88.243:3000` – gilt nur im Heimnetz des Entwicklers. Auf einem anderen Rechner zeigt `./setup.sh` den passenden QR-Code. Neu erzeugen: `qrencode -s 10 -m 2 -o docs/qr-lokal.png "http://<IP>:3000"`.
-
 ## So funktioniert's
 
 1. Video in der App wählen, Beschreibung und Hashtags eintragen, „Absenden".
@@ -71,7 +63,8 @@ Die geheimen Zugangsdaten liegen nur auf dem Server (`.env`), nie in der App.
 setup.sh  Einrichtung auf einem neuen Rechner
 public/   App (HTML, CSS, JS, PWA) – Hauptmenü, Video-Seite, Pilztouren-Platzhalter
 server/   Express-Server + Plattform-Module (instagram.js)
-docs/     Screenshots und QR-Code für die README
+scripts/  Hilfsskripte (QR-Code)
+docs/     Screenshots für die README
 ```
 
 Neue Unterseiten werden in `public/js/nav.js` eingetragen, neue Plattformen als Modul in `server/`.

@@ -143,9 +143,10 @@ if [ "$WANT_SERVICE" = 0 ]; then
 fi
 echo "Im Handy-Browser: $URL   (Handy im selben WLAN)"
 
-if command -v qrencode >/dev/null && [ -n "$IP" ]; then
+if [ -n "$IP" ]; then
   echo
-  qrencode -t UTF8 -m 2 "$URL"
-else
-  echo "(Für einen QR-Code im Terminal: qrencode installieren)"
+  node scripts/qr.js "$URL"
+  echo
+  echo "Den Code mit der Handy-Kamera scannen oder das Bild auf dem PC öffnen."
+  echo "(Gilt nur für diesen Rechner und dieses Netz – bei neuer IP ./setup.sh erneut ausführen.)"
 fi
