@@ -23,6 +23,25 @@ Ab jetzt postet der Server selbstständig: Zu jedem Termin des Wochenplans nimmt
 
 Lädt die Seite nicht? Dann `./setup.sh --firewall` ausführen und prüfen, dass das Handy im selben WLAN ist (nicht Mobilfunk, kein Gast-WLAN). Weitere Option: `./setup.sh --service` startet den Server automatisch mit dem Rechner.
 
+### API-Schlüssel eintragen
+
+Alle Zugangsdaten stehen in der Datei **`.env`** im Projektordner (`./setup.sh` legt sie aus `.env.example` an). Es gibt noch keine Eingabemaske in der App.
+
+1. `.env` in einem Editor öffnen, zum Beispiel `nano .env`.
+2. Die Werte hinter dem `=` eintragen, ohne Anführungszeichen und ohne Leerzeichen.
+3. Speichern und den **Server neu starten** (`Strg+C`, dann `npm start`; beim Dienst `systemctl --user restart tourpost`). Die `.env` wird nur beim Start gelesen.
+
+| Eintrag | Bedeutung |
+|---|---|
+| `IG_MODE` | `test` = es wird nichts gepostet (simuliert), `live` = echter Instagram-Upload |
+| `IG_USER_ID` | Instagram-Konto-ID (Business- oder Creator-Konto) |
+| `IG_ACCESS_TOKEN` | Zugriffstoken aus der Meta-Developer-App |
+| `PUBLIC_BASE_URL` | Öffentliche HTTPS-Adresse des Servers (zum Beispiel Cloudflare Tunnel). Instagram lädt das Video von dort ab |
+| `YT_MODE`, `TT_MODE` | Bleiben auf `test`. YouTube und TikTok sind noch nicht angebunden, dafür gibt es noch keine Schlüssel |
+| `NTFY_TOPIC` | Optional: Thema für Push-Nachrichten aufs Handy (siehe „Benachrichtigungen") |
+
+Zum Ausprobieren erst mit `IG_MODE=test` testen und erst dann auf `live` stellen. Die `.env` enthält Geheimnisse und ist per `.gitignore` vom Repository ausgeschlossen. Nie weitergeben oder committen.
+
 ## Vorschau
 
 <table>
