@@ -38,28 +38,6 @@ Der Nutzer muss nicht jedes Mal daran erinnern.
 
 - **Instagram-Token-Verlängerung live prüfen**: `server/igtoken.js` verlängert das Token automatisch (nach der Doku `refresh_access_token`, ungeprüft, nur gegen eine Attrappe getestet). Beim ersten Live-Lauf kontrollieren, dass `data/igtoken.json` ein Ablaufdatum bekommt und die `.env` ein neues Token enthält.
 
-## Nachricht an den Kumpel (Instagram-Zugang)
-
-Zum Weiterschicken, wenn der Nutzer das Token braucht. Lockerer Ton ist gewollt. `<DEINE-MAIL>` vor dem Senden durch die Mailadresse des Nutzers ersetzen (steht absichtlich nicht im öffentlichen Repo).
-
-> hey, wegen instagram brauch ich einmal nen zugang von dir damit die app deine reels posten kann. dauert so 15-20 min und n passwort brauch ich nicht, nur am ende nen "token"
->
-> du brauchst dafür n normales facebook profil (nur zum anmelden bei meta, ne facebook seite brauchst du nicht)
->
-> 1. geh auf developers.facebook.com und melde dich mit facebook an, registrier dich als entwickler (kann sein dass er nach handynummer oder mail fragt)
-> 2. "App erstellen", typ Business, name egal z.b. TourPost
-> 3. füg "Instagram API mit Instagram-Login" hinzu
-> 4. bei App-Rollen → Rollen dein instagram konto als Instagram-Tester eintragen, dann in der insta app die einladung annehmen (einstellungen → apps und websites → tester-einladungen)
-> 5. im dashboard bei der instagram einrichtung ein token generieren. wichtig: instagram_business_basic und instagram_business_content_publish müssen dabei sein
->
-> das token schickst du mir bitte per mail an <DEINE-MAIL> (nicht in den chat) und löschst die mail danach bei dir auch aus gesendet und papierkorb. wer das token hat kann auf deinem konto posten
->
-> musst du nur einmal machen, die app verlängert das token danach selber. wenn du bei nem schritt was anderes siehst als bei mir steht, schick mir n screenshot (aber ohne token)
->
-> noch ne frage: hast du eigentlich auch schon nen youtube kanal und tiktok? wir machen erstmal nur instagram, aber dann weiß ich wie es danach weitergeht
-
-Das Token trägt der Nutzer selbst in die `.env` ein und schickt es nie in den Chat.
-
 ## YouTube einrichten (Schritte für den Nutzer)
 
 Der Code ist fertig (`server/youtube.js`, `scripts/youtube-auth.js`), aber noch nicht live getestet. Das Video landet auf dem Kanal des Google-Kontos, mit dem man sich anmeldet. Zum Testen den eigenen Kanal nehmen.
@@ -86,6 +64,7 @@ Der Code ist fertig (`server/tiktok.js`, `scripts/tiktok-auth.js`, Direct Post m
 ## Regeln
 
 - **Keine Zugangsdaten** (`.env`, Tokens, SSH-Schlüssel) committen oder im Chat ausgeben.
+- **Persönliche Nachrichten an Dritte** (zum Beispiel an den Kumpel) und Mailadressen gehören nicht ins Repo. Sie liegen lokal in `notizen/` (per `.gitignore` ausgeschlossen).
 - Ein Video darf nie zweimal gepostet werden: Duplikatsperre über den SHA-256-Hash und das Protokoll `data/log.jsonl` nicht umgehen oder abschwächen.
 - Die Live-Uploads für Instagram, YouTube und TikTok sind nach der Doku geschrieben, aber noch nicht mit echten Konten getestet (YouTube und TikTok nur gegen eine Attrappe geprüft). TikTok-Videos bleiben bis zum App-Audit privat. Das nicht als „fertig" darstellen.
 - `server/media.js` ist der Medienserver (Port `MEDIA_PORT`, nur 127.0.0.1, liefert ausschließlich `/media/<24 Hex>.<endung>`). **Nur dieser Port** darf durch den Tunnel ins Internet, nie die App auf Port 3000. Den Medienserver nicht um weitere Routen erweitern.
