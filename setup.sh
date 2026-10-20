@@ -133,33 +133,36 @@ EOF
 fi
 
 # ---------- cloudflared (Tunnel) ----------
+# Lädt die fertige Datei ohne sudo nach ~/.local/bin (Linux).
+download_cloudflared() {
+  case "$(uname -m)" in
+    x86_64)        CF_ARCH=amd64 ;;
+    aarch64|arm64) CF_ARCH=arm64 ;;
+    *)             CF_ARCH="" ;;
+  esac
+  if [ "$(uname -s)" = Linux ] && [ -n "$CF_ARCH" ] && command -v curl >/dev/null; then
+    mkdir -p "$HOME/.local/bin"
+    curl -fsSL -o "$HOME/.local/bin/cloudflared" \
+      "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$CF_ARCH" || return 1
+    chmod +x "$HOME/.local/bin/cloudflared"
+    ok "cloudflared nach ~/.local/bin installiert"
+    case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) warn "~/.local/bin ist nicht im PATH – neues Terminal öffnen oder PATH ergänzen." ;; esac
+  else
+    return 1
+  fi
+}
+
 if [ "$WANT_TUNNEL" = 1 ]; then
   step "cloudflared (Tunnel für Instagram)"
   if command -v cloudflared >/dev/null; then
     ok "cloudflared ist schon installiert ($(cloudflared --version 2>&1 | head -1))"
-  elif command -v pacman >/dev/null; then
-    sudo pacman -S --needed --noconfirm cloudflared
+  elif command -v pacman >/dev/null && sudo pacman -S --needed --noconfirm cloudflared; then
     ok "cloudflared installiert"
-  elif command -v brew >/dev/null; then
-    brew install cloudflared
+  elif command -v brew >/dev/null && brew install cloudflared; then
     ok "cloudflared installiert"
   else
-    # sonst die fertige Datei ohne sudo nach ~/.local/bin laden
-    case "$(uname -m)" in
-      x86_64)  CF_ARCH=amd64 ;;
-      aarch64|arm64) CF_ARCH=arm64 ;;
-      *) CF_ARCH="" ;;
-    esac
-    if [ "$(uname -s)" = Linux ] && [ -n "$CF_ARCH" ] && command -v curl >/dev/null; then
-      mkdir -p "$HOME/.local/bin"
-      curl -fsSL -o "$HOME/.local/bin/cloudflared" \
-        "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$CF_ARCH"
-      chmod +x "$HOME/.local/bin/cloudflared"
-      ok "cloudflared nach ~/.local/bin installiert"
-      case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) warn "~/.local/bin ist nicht im PATH – neues Terminal öffnen oder PATH ergänzen." ;; esac
-    else
-      warn "Automatische Installation nicht möglich – siehe https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/"
-    fi
+    warn "Paketmanager hat nicht geklappt oder fehlt – lade die Datei direkt herunter."
+    download_cloudflared || warn "Installation nicht möglich – siehe https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/"
   fi
 fi
 
