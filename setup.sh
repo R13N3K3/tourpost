@@ -23,20 +23,42 @@ ok()   { printf '    \033[32m✓\033[0m %s\n' "$1"; }
 warn() { printf '    \033[33m!\033[0m %s\n' "$1"; }
 
 # ---------- Node.js ----------
+NVM_VERSION="v0.40.8"
+NODE_WANTED=24
+
+node_ok() {
+  command -v node >/dev/null && command -v npm >/dev/null \
+    && [ "$(node -p 'process.versions.node.split(".")[0]')" -ge 18 ]
+}
+
+# Installiert Node.js über nvm – nur im Home-Verzeichnis, ohne sudo.
+install_node() {
+  command -v curl >/dev/null || { echo "curl fehlt – bitte installieren und ./setup.sh neu starten."; exit 1; }
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+    echo "    nvm $NVM_VERSION wird installiert …"
+    curl -fsSo- "https://raw.githubusercontent.com/nvm-sh/nvm/$NVM_VERSION/install.sh" | bash
+  fi
+  # nvm.sh verträgt kein "set -u"
+  set +u
+  # shellcheck disable=SC1091
+  . "$NVM_DIR/nvm.sh"
+  echo "    Node.js $NODE_WANTED wird installiert …"
+  nvm install "$NODE_WANTED"
+  nvm use "$NODE_WANTED" >/dev/null
+  set -u
+}
+
 step "Node.js prüfen"
-if ! command -v node >/dev/null || ! command -v npm >/dev/null; then
-  echo "Node.js (mind. Version 18) und npm fehlen. Installation:"
-  echo "  Arch/CachyOS:   sudo pacman -S nodejs npm"
-  echo "  Debian/Ubuntu:  sudo apt install nodejs npm"
-  echo "  macOS:          brew install node"
-  exit 1
+if node_ok; then
+  ok "Node $(node -v)"
+else
+  warn "Node.js (ab Version 18) fehlt oder ist zu alt – wird automatisch installiert."
+  install_node
+  node_ok || { echo "Node.js-Installation fehlgeschlagen."; exit 1; }
+  ok "Node $(node -v) installiert"
+  warn "Neues Terminal öffnen (oder: . ~/.nvm/nvm.sh), damit 'npm start' dort funktioniert."
 fi
-NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]')
-if [ "$NODE_MAJOR" -lt 18 ]; then
-  echo "Node $(node -v) ist zu alt, benötigt wird mindestens Version 18."
-  exit 1
-fi
-ok "Node $(node -v)"
 
 # ---------- Abhängigkeiten ----------
 step "Abhängigkeiten installieren"

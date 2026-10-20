@@ -4,7 +4,7 @@ Handy-Web-App, um ein Video von unterwegs automatisch auf Instagram (später You
 
 ## Einrichtung
 
-**Voraussetzungen:** Linux oder macOS, Node.js ab Version 18 und ein Handy im selben WLAN wie der Rechner.
+**Voraussetzungen:** Linux oder macOS mit `git` und `curl` sowie ein Handy im selben WLAN wie der Rechner. Node.js muss nicht vorhanden sein.
 
 ```bash
 git clone https://github.com/R13N3K3/tourpost.git
@@ -13,7 +13,7 @@ cd tourpost
 npm start
 ```
 
-Das Skript `setup.sh` erledigt alles Nötige: Es prüft Node, installiert die Abhängigkeiten, legt `uploads/` und eine `.env` an (im Testmodus, es wird nichts gepostet) und zeigt am Ende die Adresse und einen QR-Code an. Es ist gefahrlos mehrfach ausführbar und überschreibt eine vorhandene `.env` nie.
+Das Skript `setup.sh` erledigt alles Nötige: Es prüft Node und installiert es bei Bedarf automatisch (Version 24 über [nvm](https://github.com/nvm-sh/nvm), nur im Home-Verzeichnis, ohne sudo). Dann installiert die Abhängigkeiten, legt `uploads/` und eine `.env` an (im Testmodus, es wird nichts gepostet) und zeigt am Ende die Adresse und einen QR-Code an. Es ist gefahrlos mehrfach ausführbar und überschreibt eine vorhandene `.env` nie.
 
 **Optionen**
 
