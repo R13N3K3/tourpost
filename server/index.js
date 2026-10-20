@@ -4,6 +4,8 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { publishReel } = require('./instagram');
+const { publishShort } = require('./youtube');
+const { publishTikTok } = require('./tiktok');
 
 // einfache .env-Unterstützung ohne Zusatzpaket
 const envFile = path.join(__dirname, '..', '.env');
@@ -29,7 +31,8 @@ const upload = multer({
   fileFilter: (req, file, cb) => cb(null, file.mimetype.startsWith('video/')),
 });
 
-const PUBLISHERS = { instagram: publishReel };
+const PUBLISHERS = { instagram: publishReel, youtube: publishShort, tiktok: publishTikTok };
+const NAMES = { instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok' };
 const jobs = new Map();
 
 const app = express();
@@ -41,33 +44,45 @@ app.post('/api/publish', upload.single('video'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Bitte eine Videodatei auswählen.' });
 
   const platforms = [].concat(req.body.platforms || []).filter(p => PUBLISHERS[p]);
-  if (!platforms.length) return res.status(400).json({ error: 'Keine gültige Plattform gewählt.' });
+  if (!platforms.length) {
+    fs.unlink(req.file.path, () => {});
+    return res.status(400).json({ error: 'Keine gültige Plattform gewählt.' });
+  }
 
-  const caption = [req.body.caption, req.body.tags].map(s => (s || '').trim()).filter(Boolean).join('\n\n');
+  const clean = v => (v || '').trim();
+  const title = clean(req.body.title);
+  const description = clean(req.body.description);
+  const tags = clean(req.body.tags);
+  const caption = [title, description, tags].filter(Boolean).join('\n\n');
   const base = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
   const videoUrl = `${base}/media/${req.file.filename}`;
 
   const id = crypto.randomBytes(6).toString('hex');
-  const job = { id, state: 'running', status: 'Wird gestartet …', results: {} };
+  const job = { id, state: 'running', steps: {} };
+  platforms.forEach(p => { job.steps[p] = { name: NAMES[p], state: 'waiting', text: 'Wartet …' }; });
   jobs.set(id, job);
   res.json({ jobId: id });
 
   (async () => {
-    try {
-      for (const p of platforms) {
-        job.results[p] = await PUBLISHERS[p]({
-          videoUrl, caption, onStatus: s => { job.status = s; },
+    for (const p of platforms) {
+      const step = job.steps[p];
+      step.state = 'running';
+      step.text = 'Wird gestartet …';
+      try {
+        await PUBLISHERS[p]({
+          videoUrl, filePath: req.file.path, title, description, tags, caption,
+          onStatus: s => { step.text = s; },
         });
+        step.state = 'done';
+        step.text = 'Veröffentlicht ✓';
+      } catch (err) {
+        console.error(`${NAMES[p]}:`, err);
+        step.state = 'error';
+        step.text = err.message;
       }
-      job.state = 'done';
-      job.status = 'Veröffentlicht.';
-    } catch (err) {
-      console.error(err);
-      job.state = 'error';
-      job.status = err.message;
-    } finally {
-      fs.unlink(req.file.path, () => {});
     }
+    job.state = Object.values(job.steps).every(s => s.state === 'done') ? 'done' : 'error';
+    fs.unlink(req.file.path, () => {});
   })();
 });
 

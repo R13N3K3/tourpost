@@ -54,13 +54,18 @@ function upload(formData) {
   });
 }
 
+const ICONS = { waiting: '…', running: '⏳', done: '✓', error: '✗' };
+
+function stepsText(job) {
+  return Object.values(job.steps).map(s => `${ICONS[s.state]} ${s.name}: ${s.text}`).join('\n');
+}
+
 async function waitForJob(jobId) {
   for (;;) {
     const res = await fetch(`/api/jobs/${jobId}`);
     const job = await res.json();
-    if (job.state === 'done') return job;
-    if (job.state === 'error') throw new Error(job.status);
-    setStatus(job.status);
+    if (job.state !== 'running') return job;
+    setStatus(stepsText(job));
     await new Promise(r => setTimeout(r, 2000));
   }
 }
@@ -74,7 +79,8 @@ form.addEventListener('submit', async (e) => {
 
   const data = new FormData();
   data.append('video', selectedFile);
-  data.append('caption', document.getElementById('title').value);
+  data.append('title', document.getElementById('title').value);
+  data.append('description', document.getElementById('desc').value);
   data.append('tags', document.getElementById('tags').value);
   chosen.forEach(p => data.append('platforms', p));
 
@@ -84,8 +90,8 @@ form.addEventListener('submit', async (e) => {
     const { jobId } = await upload(data);
     setProgress(null);
     setStatus('Wird verarbeitet …');
-    await waitForJob(jobId);
-    setStatus('Veröffentlicht ✓', 'ok');
+    const job = await waitForJob(jobId);
+    setStatus(stepsText(job), job.state === 'done' ? 'ok' : 'error');
   } catch (err) {
     setProgress(null);
     setStatus(err.message, 'error');

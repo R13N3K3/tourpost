@@ -30,8 +30,13 @@
       </div>
 
       <div class="field">
-        <label for="title">Beschreibung</label>
-        <textarea id="title" name="title" placeholder="Text für den Beitrag …"></textarea>
+        <label for="title">Titel</label>
+        <input type="text" id="title" name="title" maxlength="100" placeholder="Kurzer Titel (max. 100 Zeichen)" required>
+      </div>
+
+      <div class="field">
+        <label for="desc">Beschreibung</label>
+        <textarea id="desc" name="desc" placeholder="Text für den Beitrag …"></textarea>
       </div>
 
       <div class="field">
@@ -44,15 +49,15 @@
         <div class="platforms">
           <label class="platform">
             <input type="checkbox" name="platform" value="instagram" checked>
-            <span class="name">Instagram</span>
+            <span class="name">Instagram Reel</span>
           </label>
-          <label class="platform off">
-            <input type="checkbox" name="platform" value="youtube" disabled>
-            <span class="name">YouTube</span><span class="badge">Bald</span>
+          <label class="platform">
+            <input type="checkbox" name="platform" value="youtube" checked>
+            <span class="name">YouTube Short</span>
           </label>
-          <label class="platform off">
-            <input type="checkbox" name="platform" value="tiktok" disabled>
-            <span class="name">TikTok</span><span class="badge">Bald</span>
+          <label class="platform">
+            <input type="checkbox" name="platform" value="tiktok" checked>
+            <span class="name">TikTok</span>
           </label>
         </div>
       </div>
@@ -65,7 +70,7 @@
       <p class="status" id="status"></p>
     </form>
 
-    <p class="hint">Das Video wird auf deinen Server geladen und von dort automatisch veröffentlicht – du musst nichts weiter tun.</p>
+    <p class="hint">Das Video wird auf deinen Server geladen und von dort automatisch auf den gewählten Plattformen veröffentlicht. YouTube braucht den Titel, Instagram und TikTok bekommen Titel, Beschreibung und Hashtags als Text.</p>
   </main>
 </body>
 </html>

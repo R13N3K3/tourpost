@@ -2,7 +2,7 @@
 // IG_MODE=test simuliert alles, ohne etwas zu posten.
 const GRAPH = 'https://graph.facebook.com/v21.0';
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+const { sleep } = require('./util');
 
 async function graph(path, { method = 'GET', params = {} } = {}) {
   const url = new URL(GRAPH + path);

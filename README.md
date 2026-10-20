@@ -1,6 +1,6 @@
 # TourPost
 
-Handy-Web-App, um ein Video von unterwegs automatisch auf Instagram (später YouTube, TikTok) zu veröffentlichen. Das Smartphone ist die Fernbedienung, ein kleiner Node-Server übernimmt den Upload.
+Handy-Web-App, um ein Video von unterwegs automatisch als Instagram Reel, YouTube Short und auf TikTok zu veröffentlichen. Das Smartphone ist die Fernbedienung, ein kleiner Node-Server übernimmt den Upload.
 
 ## Einrichtung & Nutzung
 
@@ -16,7 +16,7 @@ npm start
 1. `./setup.sh` richtet alles ein und zeigt einen **QR-Code** für diesen Rechner.
 2. Mit der Handy-Kamera scannen. Die App öffnet sich im Browser.
 3. Optional „Zum Startbildschirm hinzufügen", dann startet sie wie eine App.
-4. „Video verteilen" → Video wählen, Text und Hashtags eintragen → „Absenden".
+4. „Video verteilen" → Video wählen, Titel, Text und Hashtags eintragen → Plattformen wählen → „Absenden".
 
 Lädt die Seite nicht? Dann `./setup.sh --firewall` ausführen und prüfen, dass das Handy im selben WLAN ist (nicht Mobilfunk, kein Gast-WLAN). Weitere Option: `./setup.sh --service` startet den Server automatisch mit dem Rechner.
 
@@ -37,9 +37,10 @@ Lädt die Seite nicht? Dann `./setup.sh --firewall` ausführen und prüfen, dass
 
 ## So funktioniert's
 
-1. Video in der App wählen, Beschreibung und Hashtags eintragen, „Absenden".
-2. Der Server stellt das Video kurz unter einer öffentlichen URL bereit.
-3. Instagram holt es ab und veröffentlicht es als Reel (Graph API), danach wird das Video gelöscht.
+1. Video in der App wählen, Titel, Beschreibung und Hashtags eintragen, Plattformen wählen, „Absenden".
+2. Der Server arbeitet die Plattformen nacheinander ab und zeigt den Status pro Plattform an.
+3. Instagram holt das Video über eine öffentliche URL ab und veröffentlicht es als Reel (Graph API). YouTube und TikTok bekommen die Datei direkt vom Server.
+4. Danach wird das Video auf dem Server gelöscht.
 
 Die geheimen Zugangsdaten liegen nur auf dem Server (`.env`), nie in der App.
 
@@ -48,7 +49,7 @@ Die geheimen Zugangsdaten liegen nur auf dem Server (`.env`), nie in der App.
 ```
 setup.sh  Einrichtung auf einem neuen Rechner
 public/   App (HTML, CSS, JS, PWA) – Hauptmenü, Video-Seite, Pilztouren-Platzhalter
-server/   Express-Server + Plattform-Module (instagram.js)
+server/   Express-Server + ein Modul pro Plattform (instagram.js, youtube.js, tiktok.js)
 scripts/  Hilfsskripte (QR-Code)
 docs/     Screenshots für die README
 ```
@@ -59,7 +60,9 @@ Neue Unterseiten werden in `public/js/nav.js` eingetragen, neue Plattformen als 
 
 | Variable | Bedeutung |
 |---|---|
-| `IG_MODE` | `test` simuliert nur, `live` postet wirklich |
+| `IG_MODE` | Instagram: `test` simuliert nur, `live` postet wirklich |
+| `YT_MODE` | YouTube: `test` oder `live` (Live noch nicht eingerichtet) |
+| `TT_MODE` | TikTok: `test` oder `live` (Live noch nicht eingerichtet) |
 | `IG_USER_ID` | Instagram-Business-/Creator-User-ID |
 | `IG_ACCESS_TOKEN` | langlebiges Meta-Access-Token |
 | `PUBLIC_BASE_URL` | öffentliche HTTPS-Adresse des Servers (z. B. Cloudflare Tunnel) |
@@ -69,11 +72,12 @@ Für den Live-Modus braucht es ein Instagram-Business- oder Creator-Konto, eine 
 
 ## Status
 
-Prototyp. Testmodus läuft, der Live-Upload ist noch nicht mit einem echten Konto getestet. Es gibt noch keinen Zugangsschutz – den Server nicht ungeschützt ins Internet stellen.
+Prototyp. Alle drei Plattformen laufen im Testmodus (Upload, Status pro Plattform, Fehlermeldungen). Live ist bisher nur Instagram programmiert, aber noch nicht mit einem echten Konto getestet. YouTube (Google-Login) und TikTok (Login, App-Prüfung) sind noch nicht angebunden. Es gibt noch keinen Zugangsschutz – den Server nicht ungeschützt ins Internet stellen.
 
 ## Geplant
 
-- Zugangsschutz
+- Instagram live testen, danach YouTube und TikTok anbinden
+- Videoprüfung vor dem Upload (Format, Länge, Seitenverhältnis)
 - Videos im Voraus hochladen und planen
-- YouTube und TikTok
+- Zugangsschutz
 - Kundenansicht für gebuchte Pilztouren
