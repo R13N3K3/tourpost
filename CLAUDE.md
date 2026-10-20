@@ -72,11 +72,22 @@ Der Code ist fertig (`server/youtube.js`, `scripts/youtube-auth.js`), aber noch 
 6. `YT_MODE=live` und `YT_PRIVACY=private` setzen, Server neu starten, ein Wegwerf-Video nur für YouTube posten („Sofort"), im YouTube Studio prüfen und danach löschen.
 7. Später: Zustimmungsbildschirm auf „In Produktion" stellen (sonst läuft das Token nach 7 Tagen ab). Uploads aus ungeprüften Projekten setzt Google auf privat, dafür gibt es ein Prüfformular.
 
+## TikTok einrichten (Schritte für den Nutzer)
+
+Der Code ist fertig (`server/tiktok.js`, `scripts/tiktok-auth.js`, Direct Post mit FILE_UPLOAD), aber noch nicht live getestet. Menünamen im Portal ändern sich, sinngemäß suchen.
+
+1. developers.tiktok.com → App anlegen, Produkte **Login Kit** und **Content Posting API** (Direct Post) hinzufügen, Berechtigungen `user.info.basic` und `video.publish`.
+2. Bei Login Kit eine **Redirect-URI** (https) eintragen und als `TT_REDIRECT_URI` in die `.env`. `TT_CLIENT_KEY` und `TT_CLIENT_SECRET` ebenfalls in die `.env` (nie in den Chat).
+3. Das eigene TikTok-Konto als Testnutzer (Sandbox / Target User) eintragen.
+4. `npm run tiktok-auth`, Link öffnen, erlauben, die komplette Adresse aus der Adresszeile ins Terminal einfügen. Das Skript schreibt `TT_REFRESH_TOKEN` (ca. 365 Tage gültig, der Server erneuert es selbst).
+5. `TT_MODE=live`, `TT_PRIVACY=SELF_ONLY`, Server neu starten, Wegwerf-Video nur für TikTok posten, in der App prüfen, löschen.
+6. Ohne **App-Audit** bleibt alles privat (`SELF_ONLY`), eventuell muss das Konto privat sein (`unaudited_client_can_only_post_to_private_accounts`). Nach dem Audit `TT_PRIVACY=PUBLIC_TO_EVERYONE`. Das Audit beantragt der Nutzer im Portal.
+
 ## Regeln
 
 - **Keine Zugangsdaten** (`.env`, Tokens, SSH-Schlüssel) committen oder im Chat ausgeben.
 - Ein Video darf nie zweimal gepostet werden: Duplikatsperre über den SHA-256-Hash und das Protokoll `data/log.jsonl` nicht umgehen oder abschwächen.
-- Die Live-Uploads für Instagram und YouTube sind nach der Doku geschrieben, aber noch nicht mit echten Konten getestet (YouTube nur gegen eine Attrappe geprüft). TikTok läuft nur im Testmodus. Das nicht als „fertig" darstellen.
+- Die Live-Uploads für Instagram, YouTube und TikTok sind nach der Doku geschrieben, aber noch nicht mit echten Konten getestet (YouTube und TikTok nur gegen eine Attrappe geprüft). TikTok-Videos bleiben bis zum App-Audit privat. Das nicht als „fertig" darstellen.
 - `server/media.js` ist der Medienserver (Port `MEDIA_PORT`, nur 127.0.0.1, liefert ausschließlich `/media/<24 Hex>.<endung>`). **Nur dieser Port** darf durch den Tunnel ins Internet, nie die App auf Port 3000. Den Medienserver nicht um weitere Routen erweitern.
 - Es gibt noch **keinen Zugangsschutz**. Den Server nicht ungeschützt ins Internet stellen.
 - Commit-Nachrichten auf Deutsch, am Ende die Co-Authored-By-Zeile der aktuellen Sitzung.

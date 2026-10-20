@@ -42,7 +42,11 @@ Alle Zugangsdaten stehen in der Datei **`.env`** im Projektordner (`./setup.sh` 
 | `YT_CLIENT_ID`, `YT_CLIENT_SECRET` | OAuth-Client aus der Google Cloud Console |
 | `YT_REFRESH_TOKEN` | Wird von `npm run youtube-auth` eingetragen, nicht von Hand |
 | `YT_PRIVACY` | `public`, `unlisted` oder `private` (zum Testen `private`) |
-| `TT_MODE` | Bleibt auf `test`, TikTok ist noch nicht angebunden |
+| `TT_MODE` | `test` oder `live` für TikTok |
+| `TT_CLIENT_KEY`, `TT_CLIENT_SECRET` | Aus der App im TikTok-Developer-Portal |
+| `TT_REDIRECT_URI` | https-Adresse, in der TikTok-App als Redirect-URI eingetragen |
+| `TT_REFRESH_TOKEN` | Wird von `npm run tiktok-auth` eingetragen und vom Server selbst erneuert |
+| `TT_PRIVACY` | `SELF_ONLY` (bis zum Audit) oder `PUBLIC_TO_EVERYONE` |
 | `NTFY_TOPIC` | Optional: Thema für Push-Nachrichten aufs Handy (siehe „Benachrichtigungen") |
 
 Zum Ausprobieren erst mit `IG_MODE=test` testen und erst dann auf `live` stellen. Die `.env` enthält Geheimnisse und ist per `.gitignore` vom Repository ausgeschlossen. Nie weitergeben oder committen.
@@ -72,10 +76,15 @@ Läuft über die **Instagram API mit Instagram-Login**. Es wird **keine Facebook
 - **Testen:** Ein Wegwerf-Video nur für YouTube hochladen („Sofort"). Im YouTube Studio prüfen, ob es da ist und als Short erkannt wird (hochkant, höchstens 3 Minuten). Danach löschen, die Duplikatsperre merkt sich das Video. Erst dann `YT_PRIVACY=public`.
 - Uploads aus nicht geprüften API-Projekten setzt Google zunächst auf **privat**, auch bei `YT_PRIVACY=public`. Dafür gibt es ein Prüfformular von Google. Das Tageskontingent (10.000 Einheiten, ein Upload ca. 1.600) reicht für 1–2 Videos pro Woche.
 
-**TikTok** (noch nicht angebunden)
-- Auf [developers.tiktok.com](https://developers.tiktok.com) eine App anlegen, die Produkte **Login Kit** und **Content Posting API** hinzufügen. Daraus kommen Client Key und Client Secret, dazu ein Token über die Anmeldung im Browser.
-- Ohne bestandenes **App-Audit** sind Direct-Post-Videos nur **privat** sichtbar. Als Alternative gibt es den **Upload als Entwurf**: Das Video landet im TikTok-Postfach und wird dort per Tipp veröffentlicht.
-- **Testen:** Zuerst im **Sandbox-Modus** der App mit dem eigenen Testkonto, dann Entwurf-Upload, erst nach dem Audit Direct Post.
+**TikTok** (Code vorhanden, noch nie live getestet)
+Läuft über die **Content Posting API** (Direct Post, die Datei wird direkt vom Server hochgeladen, ohne öffentliche Adresse).
+1. Auf [developers.tiktok.com](https://developers.tiktok.com) anmelden und eine **App** anlegen. Die Produkte **Login Kit** und **Content Posting API** hinzufügen, bei der Content Posting API **Direct Post** aktivieren. Berechtigungen: `user.info.basic` und `video.publish`.
+2. Bei Login Kit eine **Redirect-URI** eintragen: eine beliebige `https`-Adresse, die du kontrollierst oder die einfach eine (Fehler-)Seite zeigt. Dieselbe Adresse als `TT_REDIRECT_URI` in die `.env`. **Client Key** und **Client Secret** der App als `TT_CLIENT_KEY` und `TT_CLIENT_SECRET` eintragen.
+3. Das TikTok-Konto als **Testnutzer** der App eintragen (Sandbox bzw. „Target Users", je nach Portal-Ansicht).
+4. `npm run tiktok-auth` ausführen, den Link im Browser öffnen, bei TikTok erlauben, dann die komplette Adresse aus der Adresszeile (sie enthält `?code=…`) in das Terminal einfügen. Das Skript trägt `TT_REFRESH_TOKEN` in die `.env` ein. Es gilt ca. 365 Tage, der Server erneuert den Zugriff selbst (der Access-Token gilt nur 24 Stunden).
+5. `TT_MODE=live` und `TT_PRIVACY=SELF_ONLY` setzen, Server neu starten.
+- **Testen:** Ein Wegwerf-Video nur für TikTok posten („Sofort") und in der TikTok-App prüfen. Danach löschen, die Duplikatsperre merkt sich das Video.
+- **Wichtig:** Ohne bestandenes **App-Audit** von TikTok sind alle Videos **nur für den Autor sichtbar** (`SELF_ONLY`). Die API meldet dazu eventuell `unaudited_client_can_only_post_to_private_accounts`, dann muss das TikTok-Konto auf **privat** gestellt sein. Erst nach dem Audit `TT_PRIVACY=PUBLIC_TO_EVERYONE` setzen. Pro Konto gilt ein Tageslimit für API-Posts.
 
 ## Vorschau
 
@@ -133,7 +142,7 @@ public/   App (HTML, CSS, JS, PWA) – Hauptmenü, Video-Seite, Pilztouren-Platz
 server/   Express-Server mit Planer und Wochenplan (schedule.js, settings.js), Vorrat (queue.js), Protokoll (log.js),
           Benachrichtigung (notify.js), Medienserver (media.js, liefert nur Videodateien für den Tunnel aus) und ein Modul pro Plattform (instagram.js, youtube.js, tiktok.js)
 data/     Vorrat, Wochenplan und Protokoll (queue.json, settings.json, log.jsonl), nicht im Repo
-scripts/  Hilfsskripte (QR-Code, YouTube-Anmeldung)
+scripts/  Hilfsskripte (QR-Code, YouTube- und TikTok-Anmeldung)
 docs/     Screenshots für die README
 ```
 
@@ -157,11 +166,11 @@ Für den Live-Modus braucht es ein Instagram-Business- oder Creator-Konto, eine 
 
 ## Status
 
-Prototyp. Alle drei Plattformen laufen im Testmodus (Upload, Vorrat, Wochenplan mit Autopilot, Status pro Plattform, Protokoll, Duplikatschutz, Warnungen). Live sind Instagram und YouTube programmiert, aber noch nicht mit echten Konten getestet (YouTube nur gegen eine Attrappe der Schnittstelle). TikTok (Login, App-Prüfung) ist noch nicht angebunden. Es gibt noch keinen Zugangsschutz – den Server nicht ungeschützt ins Internet stellen.
+Prototyp. Alle drei Plattformen laufen im Testmodus (Upload, Vorrat, Wochenplan mit Autopilot, Status pro Plattform, Protokoll, Duplikatschutz, Warnungen). Live sind Instagram, YouTube und TikTok programmiert, aber noch nicht mit echten Konten getestet (YouTube und TikTok nur gegen eine Attrappe der Schnittstelle). TikTok-Videos bleiben bis zum App-Audit privat. Es gibt noch keinen Zugangsschutz – den Server nicht ungeschützt ins Internet stellen.
 
 ## Geplant
 
-- Instagram und YouTube live testen, danach TikTok anbinden
+- Instagram, YouTube und TikTok live testen
 - Videoprüfung vor dem Upload (Format, Länge, Seitenverhältnis)
 - Zugangsschutz
 - Kundenansicht für gebuchte Pilztouren

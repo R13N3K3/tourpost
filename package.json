@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server/index.js",
-    "youtube-auth": "node scripts/youtube-auth.js"
+    "youtube-auth": "node scripts/youtube-auth.js",
+    "tiktok-auth": "node scripts/tiktok-auth.js"
   },
   "keywords": [],
   "author": "",
