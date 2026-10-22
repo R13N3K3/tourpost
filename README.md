@@ -36,7 +36,7 @@ Alle Zugangsdaten stehen in der Datei **`.env`** im Projektordner (`./setup.sh` 
 | `IG_MODE` | `test` = es wird nichts gepostet (simuliert), `live` = echter Instagram-Upload |
 | `IG_USER_ID` | Instagram-Konto-ID (Business- oder Creator-Konto) |
 | `IG_ACCESS_TOKEN` | Instagram-Token aus der Meta-Developer-App (ca. 60 Tage gültig) |
-| `PUBLIC_BASE_URL` | Öffentliche HTTPS-Adresse des **Medienservers** (Cloudflare Tunnel auf `MEDIA_PORT`). Instagram lädt das Video von dort ab |
+| `PUBLIC_BASE_URL` | Optional: feste HTTPS-Adresse des **Medienservers** (eigener Cloudflare-Tunnel). Leer lassen, dann startet der Server im Live-Modus selbst einen Schnelltunnel (`server/tunnel.js`). Instagram lädt das Video von dort ab |
 | `MEDIA_PORT` | Port des Medienservers, Standard 3001 |
 | `YT_MODE` | `test` oder `live` für YouTube |
 | `YT_CLIENT_ID`, `YT_CLIENT_SECRET` | OAuth-Client aus der Google Cloud Console |
@@ -56,15 +56,18 @@ Zum Ausprobieren erst mit `IG_MODE=test` testen und erst dann auf `live` stellen
 > **Todo / ungeprüft:** Die Schritte unten stammen aus der Plattform-Dokumentation bzw. dem Kenntnisstand und sind noch nicht mit echten Konten durchgespielt. Menüs und Regeln der Plattformen ändern sich, im Zweifel die aktuelle Doku prüfen. Vorher überall `…_MODE=test` lassen.
 
 **Instagram** (Code vorhanden, noch nie live getestet)
+Eine ausführliche Schritt-für-Schritt-Anleitung für Instagram und YouTube steht in [docs/anleitung-schluessel.md](docs/anleitung-schluessel.md).
+
 Läuft über die **Instagram API mit Instagram-Login**. Es wird **keine Facebook-Seite** gebraucht, das Konto muss nur **Creator oder Business** sein.
 1. Auf [developers.facebook.com](https://developers.facebook.com) eine **App** anlegen (Typ „Business") und den Anwendungsfall **„Instagram API mit Instagram-Login"** hinzufügen. Die Menünamen ändern sich bei Meta öfter, im Zweifel danach suchen.
 2. Das Instagram-Konto als **Instagram-Tester** der App hinzufügen und die Einladung in der Instagram-App annehmen (Einstellungen → Apps und Websites → Tester-Einladungen).
 3. Im App-Dashboard bei der Instagram-Einrichtung für dieses Konto ein **Token generieren**, mit der Berechtigung `instagram_business_content_publish` (zusätzlich `instagram_business_basic`). Das ist `IG_ACCESS_TOKEN` und gilt ca. 60 Tage. Der Server **verlängert es automatisch** (`server/igtoken.js`, im Live-Modus beim Start und alle 6 Stunden geprüft, Verlängerung nach spätestens 20 Tagen, neues Token wird in der `.env` gespeichert). Läuft der Server länger als ca. 60 Tage nicht, muss das Token neu erzeugt werden. Schlägt die Verlängerung dauerhaft fehl, kommt eine ntfy-Nachricht. Das ist noch nicht live getestet.
 4. `IG_USER_ID` ist die Instagram-Konto-ID. Sie steht beim Token-Erzeugen im Dashboard oder kommt von: `curl "https://graph.instagram.com/v23.0/me?fields=user_id,username&access_token=<TOKEN>"` (Feld `user_id`).
 5. `PUBLIC_BASE_URL`: Instagram holt das Video selbst von einer öffentlichen HTTPS-Adresse. Dafür läuft neben der App ein kleiner **Medienserver** (Port `MEDIA_PORT`, Standard 3001, nur lokal erreichbar), der ausschließlich `/media/<zufälliger-Dateiname>` ausliefert. **Nur diesen Port** durch einen Cloudflare Tunnel ins Internet stellen, nie die App (Port 3000). Der Tunnel braucht keine Portfreigabe im Router, weil er die Verbindung von deinem PC nach außen aufbaut.
-   - Zum Testen ohne Konto: `cloudflared tunnel --url http://127.0.0.1:3001` (Installation mit `./setup.sh --tunnel`). Die ausgegebene `https://….trycloudflare.com`-Adresse als `PUBLIC_BASE_URL` in die `.env` eintragen und den Server neu starten. Die Adresse ändert sich bei jedem Start des Tunnels.
-   - Für den Dauerbetrieb einen festen Tunnel mit kostenlosem Cloudflare-Konto und eigener Domain einrichten.
-- **Testen:** (1) Adresse prüfen: `<PUBLIC_BASE_URL>/media/test` muss „404“ liefern (der Tunnel erreicht den Medienserver), die App selbst (`<PUBLIC_BASE_URL>/api/status`) darf von außen **nicht** erreichbar sein. (2) Token prüfen: der `curl` aus Schritt 4 muss `user_id` und `username` liefern. (3) `IG_MODE=live` setzen und **ein kurzes Wegwerf-Video** nur für Instagram posten (Hochformat 9:16, MP4, über 3 Sekunden), danach das Reel auf Instagram wieder löschen. Achtung: Die Duplikatsperre merkt sich dieses Video, es lässt sich nicht noch einmal hochladen.
+   - **Automatisch (Standard):** `PUBLIC_BASE_URL` leer lassen und `cloudflared` installieren (`./setup.sh --tunnel`). Im Live-Modus (`IG_MODE=live`) startet der Server den Schnelltunnel selbst, liest die `https://….trycloudflare.com`-Adresse aus, prüft vor jedem Instagram-Upload, dass sie erreichbar ist, und startet den Tunnel bei Ausfall neu. Die Adresse ändert sich dabei, das stört nicht, weil sie bei jedem Upload frisch gelesen wird. Schnelltunnel haben aber keine Verfügbarkeitszusage von Cloudflare.
+   - **Fest:** Wer eine eigene Domain hat, richtet einen benannten Tunnel ein und trägt die Adresse als `PUBLIC_BASE_URL` ein. Dann startet der Server keinen eigenen Tunnel.
+   - Damit alles ohne Zutun läuft, den Server als Dienst einrichten: `./setup.sh --service` (der Tunnel startet mit dem Server).
+- **Testen:** (1) Adresse prüfen (beim Schnelltunnel steht sie in der Serverausgabe als `Tunnel: …`): `<Adresse>/media/test` muss „404“ liefern (der Tunnel erreicht den Medienserver), die App selbst (`<Adresse>/api/status`) darf von außen **nicht** erreichbar sein. (2) Token prüfen: der `curl` aus Schritt 4 muss `user_id` und `username` liefern. (3) `IG_MODE=live` setzen und **ein kurzes Wegwerf-Video** nur für Instagram posten (Hochformat 9:16, MP4, über 3 Sekunden), danach das Reel auf Instagram wieder löschen. Achtung: Die Duplikatsperre merkt sich dieses Video, es lässt sich nicht noch einmal hochladen.
 - Solange die Meta-App im Entwicklermodus ist, funktioniert sie nur für Konten, die als Tester eingetragen sind. Das reicht hier, ein App-Review ist nicht nötig.
 
 **YouTube** (Code vorhanden, noch nie live getestet)
@@ -140,7 +143,7 @@ Die geheimen Zugangsdaten liegen nur auf dem Server (`.env`), nie in der App.
 setup.sh  Einrichtung auf einem neuen Rechner
 public/   App (HTML, CSS, JS, PWA) – Hauptmenü, Video-Seite, Pilztouren-Platzhalter
 server/   Express-Server mit Planer und Wochenplan (schedule.js, settings.js), Vorrat (queue.js), Protokoll (log.js),
-          Benachrichtigung (notify.js), Medienserver (media.js, liefert nur Videodateien für den Tunnel aus) und ein Modul pro Plattform (instagram.js, youtube.js, tiktok.js)
+          Benachrichtigung (notify.js), Medienserver (media.js, liefert nur Videodateien für den Tunnel aus), Tunnel (tunnel.js, startet cloudflared) und ein Modul pro Plattform (instagram.js, youtube.js, tiktok.js)
 data/     Vorrat, Wochenplan und Protokoll (queue.json, settings.json, log.jsonl), nicht im Repo
 scripts/  Hilfsskripte (QR-Code, YouTube- und TikTok-Anmeldung)
 docs/     Screenshots für die README
@@ -157,7 +160,7 @@ Neue Unterseiten werden in `public/js/nav.js` eingetragen, neue Plattformen als 
 | `TT_MODE` | TikTok: `test` oder `live` (Live noch nicht eingerichtet) |
 | `IG_USER_ID` | Instagram-Business-/Creator-User-ID |
 | `IG_ACCESS_TOKEN` | langlebiges Meta-Access-Token |
-| `PUBLIC_BASE_URL` | öffentliche HTTPS-Adresse des Servers (z. B. Cloudflare Tunnel) |
+| `PUBLIC_BASE_URL` | feste öffentliche Adresse des Medienservers, leer = automatischer Schnelltunnel |
 | `NTFY_TOPIC` | ntfy-Thema für Push-Nachrichten (leer = aus) |
 | `NTFY_SERVER` | eigener ntfy-Server, Standard `https://ntfy.sh` |
 | `PORT` | Port, Standard 3000 |

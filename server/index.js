@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { publishReel } = require('./instagram');
 const { publishShort } = require('./youtube');
 const media = require('./media');
+const tunnel = require('./tunnel');
 const igToken = require('./igtoken');
 const { publishTikTok } = require('./tiktok');
 const queue = require('./queue');
@@ -70,7 +71,6 @@ async function runItem(item) {
   item.status = 'running';
   queue.save();
 
-  const base = process.env.PUBLIC_BASE_URL || item.base;
   const filePath = path.join(UPLOAD_DIR, item.file);
   const caption = [item.title, item.description, item.tags].filter(Boolean).join('\n\n');
 
@@ -81,6 +81,8 @@ async function runItem(item) {
     step.text = 'Wird gestartet …';
     queue.save();
     try {
+      // Instagram holt das Video über den Tunnel ab; dessen Adresse wird erst jetzt gelesen
+      const base = p === 'instagram' ? await tunnel.baseUrl(item.base) : item.base;
       const result = await PUBLISHERS[p]({
         videoUrl: `${base}/media/${item.file}`, filePath,
         title: item.title, description: item.description, tags: item.tags, caption,
@@ -384,6 +386,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Läuft auf http://localhost:${PORT} (Instagram-Modus: ${process.env.IG_MODE === 'live' ? 'LIVE' : 'Test'})`);
   media.start(UPLOAD_DIR, Number(process.env.MEDIA_PORT) || 3001);
+  tunnel.start(Number(process.env.MEDIA_PORT) || 3001);
   igToken.start();
   setInterval(() => { autopilot(); tick(); }, TICK_MS);
   kick();
