@@ -109,6 +109,7 @@ Läuft über die **Content Posting API** (Direct Post, die Datei wird direkt vom
 - **Vorrat:** Hochgeladene Videos warten auf dem Server. Die Reihenfolge ist „ältestes zuerst". Die App zeigt zu jedem Video den voraussichtlichen Termin und wie lange der Vorrat reicht.
 - **Wochenplan:** Pro Wochentag eine Uhrzeit (Standard: Freitag und Sonntag um 12:00, änderbar). Alle 10 Sekunden prüft der Server, ob ein Termin da ist, und veröffentlicht dann **ein** Video. Zeiten gelten in der Zeitzone des Servers. Verpasste Termine (Server war aus) holt er bis zu 12 Stunden später nach, ältere nicht.
 - **Weitere Optionen beim Hochladen:** „Zu einem festen Zeitpunkt" für ein einzelnes Video und „Sofort (zum Testen)".
+- **Videoprüfung:** Beim Hochladen prüft der Server das Video mit `ffprobe` (muss installiert sein, sonst entfällt die Prüfung). Abgelehnt wird eine Datei, die kein lesbares Video ist, und für Instagram ein Video unter 3 Sekunden. Als gelbe **Warnung** (der Upload klappt trotzdem) erscheinen Querformat, YouTube-Videos über 3 Minuten, Instagram-Videos über 15 Minuten und ein anderer Codec als H.264. Die Warnungen stehen auf der Video-Seite und im Vorrat am Video.
 - **Veröffentlichen:** Instagram holt das Video über eine öffentliche URL ab und zeigt es als Reel (Instagram API). YouTube und TikTok bekommen die Datei direkt vom Server. Danach wird die Videodatei gelöscht.
 
 ### Benachrichtigungen
@@ -140,7 +141,7 @@ Die geheimen Zugangsdaten liegen nur auf dem Server (`.env`), nie in der App.
 ```
 setup.sh  Einrichtung auf einem neuen Rechner
 public/   App (HTML, CSS, JS, PWA) – Hauptmenü, Video-Seite, Pilztouren-Platzhalter
-server/   Express-Server mit Planer und Wochenplan (schedule.js, settings.js), Vorrat (queue.js), Protokoll (log.js),
+server/   Express-Server mit Planer und Wochenplan (schedule.js, settings.js), Vorrat (queue.js), Protokoll (log.js), Videoprüfung (videocheck.js),
           Benachrichtigung (notify.js), Medienserver (media.js, liefert nur Videodateien für den Tunnel aus), Tunnel (tunnel.js, startet cloudflared) und ein Modul pro Plattform (instagram.js, youtube.js, tiktok.js)
 data/     Vorrat, Wochenplan und Protokoll (queue.json, settings.json, log.jsonl), nicht im Repo
 scripts/  Hilfsskripte (QR-Code, YouTube- und TikTok-Anmeldung)
@@ -172,6 +173,5 @@ Prototyp. Alle drei Plattformen laufen im Testmodus (Upload, Vorrat, Wochenplan 
 ## Geplant
 
 - TikTok live testen (erst nach dem App-Audit öffentlich)
-- Videoprüfung vor dem Upload (Format, Länge, Seitenverhältnis)
 - Zugangsschutz
 - Kundenansicht für gebuchte Pilztouren

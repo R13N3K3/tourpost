@@ -7,6 +7,7 @@ const { publishReel } = require('./instagram');
 const { publishShort } = require('./youtube');
 const media = require('./media');
 const tunnel = require('./tunnel');
+const videocheck = require('./videocheck');
 const igToken = require('./igtoken');
 const { publishTikTok } = require('./tiktok');
 const queue = require('./queue');
@@ -236,6 +237,9 @@ app.post('/api/videos', upload.single('video'), async (req, res) => {
     return fail(409, `Dieses Video wurde bereits am ${day} auf ${where} veröffentlicht und wird nicht erneut hochgeladen.`);
   }
 
+  const { errors, warnings } = videocheck.check(await videocheck.probe(req.file.path), platforms);
+  if (errors.length) return fail(400, errors.join('\n'));
+
   const when = req.body.when || 'now';
   let scheduledAt = null;
   let status = 'draft';
@@ -258,6 +262,7 @@ app.post('/api/videos', upload.single('video'), async (req, res) => {
     description: clean(req.body.description),
     tags: clean(req.body.tags),
     platforms,
+    warnings,
     steps: stepsFor(platforms),
     scheduledAt,
     status,

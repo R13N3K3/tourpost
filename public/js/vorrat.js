@@ -67,6 +67,7 @@ function card(it) {
   const [label, cls] = STATUS[it.status];
   const steps = Object.values(it.steps).map(s =>
     `<div class="${s.state === 'error' ? 'err' : ''}">${ICONS[s.state]} ${esc(s.name)}: ${esc(s.text)}</div>`).join('');
+  const warns = (it.warnings || []).map(w => `<div class="warn">⚠ ${esc(w)}</div>`).join('');
   const editable = it.status !== 'running' && it.status !== 'done';
   const when = it.status === 'done' ? `Veröffentlicht ${fmt(it.finishedAt)}`
     : it.status === 'draft' ? (it.eta ? `Voraussichtlich ${fmt(it.eta)}` : 'Wartet auf den Wochenplan') : fmt(it.scheduledAt);
@@ -80,7 +81,7 @@ function card(it) {
         </div>
         <span class="pill ${cls}">${label}</span>
       </div>
-      <div class="steps">${steps}</div>
+      <div class="steps">${steps}${warns}</div>
       ${editing === it.id ? editForm(it) : `
         <div class="actions">
           ${editable ? `<button class="btn small ghost" data-action="edit" data-id="${it.id}">Bearbeiten</button>` : ''}

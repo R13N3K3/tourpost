@@ -70,6 +70,10 @@ function upload(formData) {
   });
 }
 
+// Hinweise der Videoprüfung stehen vor dem Ergebnis
+const warnText = item => (item.warnings || []).map(w => `⚠ ${w}`).join('\n');
+const withWarnings = (item, text) => [warnText(item), text].filter(Boolean).join('\n\n');
+
 const ICONS = { waiting: '…', running: '⏳', done: '✓', error: '✗' };
 const stepsText = item => Object.values(item.steps).map(s => `${ICONS[s.state]} ${s.name}: ${s.text}`).join('\n');
 
@@ -78,7 +82,7 @@ async function waitForItem(id) {
     const res = await fetch(`/api/queue/${id}`);
     const item = await res.json();
     if (item.status === 'done' || item.status === 'error') return item;
-    setStatus(stepsText(item));
+    setStatus(withWarnings(item, stepsText(item)));
     await new Promise(r => setTimeout(r, 2000));
   }
 }
@@ -111,12 +115,12 @@ form.addEventListener('submit', async (e) => {
     if (when === 'now') {
       setStatus('Wird verarbeitet …');
       const done = await waitForItem(item.id);
-      setStatus(stepsText(done), done.status === 'done' ? 'ok' : 'error');
+      setStatus(withWarnings(done, stepsText(done)), done.status === 'done' ? 'ok' : 'error');
     } else {
       const text = when === 'schedule'
         ? `Geplant für ${new Date(item.scheduledAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })} ✓`
         : 'Im Vorrat gespeichert ✓\nWird automatisch nach dem Wochenplan gepostet.';
-      setStatus(`${text}\nZeiten und Reihenfolge siehst du unter „Vorrat".`, 'ok');
+      setStatus(withWarnings(item, `${text}\nZeiten und Reihenfolge siehst du unter „Vorrat".`), 'ok');
     }
   } catch (err) {
     setProgress(null);
