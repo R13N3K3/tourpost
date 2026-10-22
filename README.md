@@ -53,15 +53,13 @@ Zum Ausprobieren erst mit `IG_MODE=test` testen und erst dann auf `live` stellen
 
 ### Wo bekomme ich die Schlüssel her, und wie teste ich?
 
-> **Todo / ungeprüft:** Die Schritte unten stammen aus der Plattform-Dokumentation bzw. dem Kenntnisstand und sind noch nicht mit echten Konten durchgespielt. Menüs und Regeln der Plattformen ändern sich, im Zweifel die aktuelle Doku prüfen. Vorher überall `…_MODE=test` lassen.
+> **Stand:** Instagram und YouTube sind mit echten Konten durchgespielt (Live-Upload geklappt). Die TikTok-Schritte stammen noch aus der Plattform-Dokumentation und sind nicht getestet. Menüs und Regeln der Plattformen ändern sich, im Zweifel die aktuelle Doku prüfen. Vorher überall `…_MODE=test` lassen. Eine ausführliche Anleitung mit allen Stolperstellen steht in [docs/anleitung-schluessel.md](docs/anleitung-schluessel.md).
 
-**Instagram** (Code vorhanden, noch nie live getestet)
-Eine ausführliche Schritt-für-Schritt-Anleitung für Instagram und YouTube steht in [docs/anleitung-schluessel.md](docs/anleitung-schluessel.md).
-
+**Instagram** (live getestet)
 Läuft über die **Instagram API mit Instagram-Login**. Es wird **keine Facebook-Seite** gebraucht, das Konto muss nur **Creator oder Business** sein.
 1. Auf [developers.facebook.com](https://developers.facebook.com) eine **App** anlegen (Typ „Business") und den Anwendungsfall **„Instagram API mit Instagram-Login"** hinzufügen. Die Menünamen ändern sich bei Meta öfter, im Zweifel danach suchen.
 2. Das Instagram-Konto als **Instagram-Tester** der App hinzufügen und die Einladung in der Instagram-App annehmen (Einstellungen → Apps und Websites → Tester-Einladungen).
-3. Im App-Dashboard bei der Instagram-Einrichtung für dieses Konto ein **Token generieren**, mit der Berechtigung `instagram_business_content_publish` (zusätzlich `instagram_business_basic`). Das ist `IG_ACCESS_TOKEN` und gilt ca. 60 Tage. Der Server **verlängert es automatisch** (`server/igtoken.js`, im Live-Modus beim Start und alle 6 Stunden geprüft, Verlängerung nach spätestens 20 Tagen, neues Token wird in der `.env` gespeichert). Läuft der Server länger als ca. 60 Tage nicht, muss das Token neu erzeugt werden. Schlägt die Verlängerung dauerhaft fehl, kommt eine ntfy-Nachricht. Das ist noch nicht live getestet.
+3. Im App-Dashboard bei der Instagram-Einrichtung für dieses Konto ein **Token generieren**, mit der Berechtigung `instagram_business_content_publish` (zusätzlich `instagram_business_basic`). Das ist `IG_ACCESS_TOKEN` und gilt ca. 60 Tage. Der Server **verlängert es automatisch** (`server/igtoken.js`, im Live-Modus beim Start und alle 6 Stunden geprüft, Verlängerung nach spätestens 20 Tagen, neues Token wird in der `.env` gespeichert). Läuft der Server länger als ca. 60 Tage nicht, muss das Token neu erzeugt werden. Schlägt die Verlängerung dauerhaft fehl, kommt eine ntfy-Nachricht. Die Verlängerung hat live funktioniert (`data/igtoken.json` bekommt ein Ablaufdatum).
 4. `IG_USER_ID` ist die Instagram-Konto-ID. Sie steht beim Token-Erzeugen im Dashboard oder kommt von: `curl "https://graph.instagram.com/v23.0/me?fields=user_id,username&access_token=<TOKEN>"` (Feld `user_id`).
 5. `PUBLIC_BASE_URL`: Instagram holt das Video selbst von einer öffentlichen HTTPS-Adresse. Dafür läuft neben der App ein kleiner **Medienserver** (Port `MEDIA_PORT`, Standard 3001, nur lokal erreichbar), der ausschließlich `/media/<zufälliger-Dateiname>` ausliefert. **Nur diesen Port** durch einen Cloudflare Tunnel ins Internet stellen, nie die App (Port 3000). Der Tunnel braucht keine Portfreigabe im Router, weil er die Verbindung von deinem PC nach außen aufbaut.
    - **Automatisch (Standard):** `PUBLIC_BASE_URL` leer lassen und `cloudflared` installieren (`./setup.sh --tunnel`). Im Live-Modus (`IG_MODE=live`) startet der Server den Schnelltunnel selbst, liest die `https://….trycloudflare.com`-Adresse aus, prüft vor jedem Instagram-Upload, dass sie erreichbar ist, und startet den Tunnel bei Ausfall neu. Die Adresse ändert sich dabei, das stört nicht, weil sie bei jedem Upload frisch gelesen wird. Schnelltunnel haben aber keine Verfügbarkeitszusage von Cloudflare.
@@ -70,7 +68,7 @@ Läuft über die **Instagram API mit Instagram-Login**. Es wird **keine Facebook
 - **Testen:** (1) Adresse prüfen (beim Schnelltunnel steht sie in der Serverausgabe als `Tunnel: …`): `<Adresse>/media/test` muss „404“ liefern (der Tunnel erreicht den Medienserver), die App selbst (`<Adresse>/api/status`) darf von außen **nicht** erreichbar sein. (2) Token prüfen: der `curl` aus Schritt 4 muss `user_id` und `username` liefern. (3) `IG_MODE=live` setzen und **ein kurzes Wegwerf-Video** nur für Instagram posten (Hochformat 9:16, MP4, über 3 Sekunden), danach das Reel auf Instagram wieder löschen. Achtung: Die Duplikatsperre merkt sich dieses Video, es lässt sich nicht noch einmal hochladen.
 - Solange die Meta-App im Entwicklermodus ist, funktioniert sie nur für Konten, die als Tester eingetragen sind. Das reicht hier, ein App-Review ist nicht nötig.
 
-**YouTube** (Code vorhanden, noch nie live getestet)
+**YouTube** (live getestet)
 1. In der [Google Cloud Console](https://console.cloud.google.com) ein **Projekt** anlegen und unter „APIs & Dienste" die **YouTube Data API v3** aktivieren.
 2. **OAuth-Zustimmungsbildschirm** einrichten (extern, Name und E-Mail frei wählbar). Das eigene Google-Konto als **Testnutzer** eintragen. Der Testmodus lässt das Token nach 7 Tagen ablaufen, deshalb später auf „In Produktion" stellen.
 3. Unter „Anmeldedaten" eine **OAuth-Client-ID** vom Typ **Desktop-App** erstellen. Client-ID und Client-Secret in die `.env` als `YT_CLIENT_ID` und `YT_CLIENT_SECRET` eintragen.
@@ -156,7 +154,7 @@ Neue Unterseiten werden in `public/js/nav.js` eingetragen, neue Plattformen als 
 | Variable | Bedeutung |
 |---|---|
 | `IG_MODE` | Instagram: `test` simuliert nur, `live` postet wirklich |
-| `YT_MODE` | YouTube: `test` oder `live` (Live ungetestet, siehe oben) |
+| `YT_MODE` | YouTube: `test` oder `live` (Live getestet) |
 | `TT_MODE` | TikTok: `test` oder `live` (Live noch nicht eingerichtet) |
 | `IG_USER_ID` | Instagram-Business-/Creator-User-ID |
 | `IG_ACCESS_TOKEN` | langlebiges Meta-Access-Token |
@@ -169,11 +167,11 @@ Für den Live-Modus braucht es ein Instagram-Business- oder Creator-Konto, eine 
 
 ## Status
 
-Prototyp. Alle drei Plattformen laufen im Testmodus (Upload, Vorrat, Wochenplan mit Autopilot, Status pro Plattform, Protokoll, Duplikatschutz, Warnungen). Live sind Instagram, YouTube und TikTok programmiert, aber noch nicht mit echten Konten getestet (YouTube und TikTok nur gegen eine Attrappe der Schnittstelle). TikTok-Videos bleiben bis zum App-Audit privat. Es gibt noch keinen Zugangsschutz – den Server nicht ungeschützt ins Internet stellen.
+Prototyp. Alle drei Plattformen laufen im Testmodus (Upload, Vorrat, Wochenplan mit Autopilot, Status pro Plattform, Protokoll, Duplikatschutz, Warnungen). Instagram und YouTube sind live mit echten Konten getestet. TikTok ist programmiert, aber noch nicht mit einem echten Konto getestet (nur gegen eine Attrappe der Schnittstelle). TikTok-Videos bleiben bis zum App-Audit privat. Es gibt noch keinen Zugangsschutz – den Server nicht ungeschützt ins Internet stellen.
 
 ## Geplant
 
-- Instagram, YouTube und TikTok live testen
+- TikTok live testen (erst nach dem App-Audit öffentlich)
 - Videoprüfung vor dem Upload (Format, Länge, Seitenverhältnis)
 - Zugangsschutz
 - Kundenansicht für gebuchte Pilztouren

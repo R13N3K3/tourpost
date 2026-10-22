@@ -34,13 +34,12 @@ Der Nutzer muss nicht jedes Mal daran erinnern.
 
 - **Telegram-Bot**: Liefert Status-Updates zu Uploads (Vorrat → wird gepostet → erfolgreich/fehlgeschlagen, Links zu den Beiträgen) und andere Kennzahlen wie Likes und Views pro Video und Plattform. Kennzahlen müssen dafür per API der Plattformen abgefragt werden (Instagram Insights, YouTube Data/Analytics API, TikTok API). Kann die bestehenden ntfy-Benachrichtigungen (`server/notify.js`) ergänzen oder ersetzen. Bot-Token und Chat-ID kommen in die `.env`, nie ins Repo.
 
-- **Schlüssel beschaffen und testen** (Anleitung steht in der `README.md` unter „Wo bekomme ich die Schlüssel her, und wie teste ich?", ist noch **ungeprüft**): Die Schritte für Instagram (Meta-App mit Instagram-Login, Token, `IG_USER_ID`, Cloudflare Tunnel), YouTube (Google OAuth) und TikTok (Developer-Portal, Sandbox, Audit) mit der aktuellen Doku abgleichen und beim ersten Durchlauf korrigieren. Jeweils zuerst `…_MODE=test`, dann Live-Test mit einem Wegwerf-Video (die Duplikatsperre sperrt es danach). Der Nutzer sollte die Konten selbst anlegen, Claude gibt keine Zugangsdaten aus.
+- **Schlüssel beschaffen und testen** (Anleitung in `docs/anleitung-schluessel.md` und in der `README.md`): Instagram und YouTube sind live durchgespielt. Offen ist TikTok (Developer-Portal, Sandbox, Audit): die Schritte mit der aktuellen Doku abgleichen und beim ersten Durchlauf korrigieren. Jeweils zuerst `…_MODE=test`, dann Live-Test mit einem Wegwerf-Video (die Duplikatsperre sperrt es danach). Der Nutzer sollte die Konten selbst anlegen, Claude gibt keine Zugangsdaten aus.
 
-- **Instagram-Token-Verlängerung live prüfen**: `server/igtoken.js` verlängert das Token automatisch (nach der Doku `refresh_access_token`, ungeprüft, nur gegen eine Attrappe getestet). Beim ersten Live-Lauf kontrollieren, dass `data/igtoken.json` ein Ablaufdatum bekommt und die `.env` ein neues Token enthält.
 
 ## YouTube einrichten (Schritte für den Nutzer)
 
-Der Code ist fertig (`server/youtube.js`, `scripts/youtube-auth.js`), aber noch nicht live getestet. Das Video landet auf dem Kanal des Google-Kontos, mit dem man sich anmeldet. Zum Testen den eigenen Kanal nehmen.
+Der Code ist fertig (`server/youtube.js`, `scripts/youtube-auth.js`), und live getestet. Das Video landet auf dem Kanal des Google-Kontos, mit dem man sich anmeldet. Zum Testen den eigenen Kanal nehmen.
 
 1. Auf console.cloud.google.com ein **Projekt** anlegen.
 2. „APIs & Dienste" → **YouTube Data API v3** aktivieren.
@@ -66,7 +65,7 @@ Der Code ist fertig (`server/tiktok.js`, `scripts/tiktok-auth.js`, Direct Post m
 - **Keine Zugangsdaten** (`.env`, Tokens, SSH-Schlüssel) committen oder im Chat ausgeben.
 - **Persönliche Nachrichten an Dritte** (zum Beispiel an den Kumpel) und Mailadressen gehören nicht ins Repo. Sie liegen lokal in `notizen/` (per `.gitignore` ausgeschlossen).
 - Ein Video darf nie zweimal gepostet werden: Duplikatsperre über den SHA-256-Hash und das Protokoll `data/log.jsonl` nicht umgehen oder abschwächen.
-- Die Live-Uploads für Instagram, YouTube und TikTok sind nach der Doku geschrieben, aber noch nicht mit echten Konten getestet (YouTube und TikTok nur gegen eine Attrappe geprüft). TikTok-Videos bleiben bis zum App-Audit privat. Das nicht als „fertig" darstellen.
+- Die Live-Uploads für Instagram und YouTube sind mit echten Konten getestet (Instagram-Tokenverlängerung ebenfalls). TikTok ist nur gegen eine Attrappe geprüft, die Videos bleiben bis zum App-Audit privat. TikTok nicht als „fertig" darstellen.
 - `server/media.js` ist der Medienserver (Port `MEDIA_PORT`, nur 127.0.0.1, liefert ausschließlich `/media/<24 Hex>.<endung>`). **Nur dieser Port** darf durch den Tunnel ins Internet, nie die App auf Port 3000. Den Medienserver nicht um weitere Routen erweitern.
 - Es gibt noch **keinen Zugangsschutz**. Den Server nicht ungeschützt ins Internet stellen.
 - Commit-Nachrichten auf Deutsch, am Ende die Co-Authored-By-Zeile der aktuellen Sitzung.

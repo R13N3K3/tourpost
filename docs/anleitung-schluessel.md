@@ -2,7 +2,7 @@
 
 Konkrete Schritte, damit TourPost auf Instagram und YouTube posten darf. Die Menünamen bei Meta und Google ändern sich öfter, im Zweifel sinngemäß suchen. Zugangsdaten gehören nur in die `.env`, nie in den Chat und nie ins Repo.
 
-Stand: **Instagram** ist bis zum Token und zum Anlegen des Reels durchgespielt (Upload noch nicht erfolgreich bestätigt). **YouTube** ist nach der Doku beschrieben, aber noch nicht live getestet.
+Stand: **Instagram** und **YouTube** sind mit echten Konten durchgespielt, der Live-Upload hat jeweils geklappt. Bei YouTube stammen die Menünamen aus der Google-Doku und können sich von der Oberfläche unterscheiden.
 
 ---
 
