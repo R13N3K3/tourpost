@@ -10,10 +10,9 @@ Du brauchst Linux oder macOS mit `git` und `curl` und ein Handy im selben WLAN. 
 git clone https://github.com/R13N3K3/tourpost.git
 cd tourpost
 ./setup.sh
-npm start
 ```
 
-1. `./setup.sh` richtet alles ein und zeigt einen **QR-Code** für diesen Rechner.
+1. `./setup.sh` richtet alles ein, startet den Server als **Dienst** (systemd-Benutzerdienst, startet automatisch und bei Absturz neu) und zeigt einen **QR-Code** für diesen Rechner. Damit der Server auch ohne Anmeldung nach einem Neustart läuft, einmal `sudo loginctl enable-linger $USER` ausführen. Ohne Dienst: `./setup.sh --no-service` und dann `npm start`.
 2. Mit der Handy-Kamera scannen. Die App öffnet sich im Browser.
 3. Optional „Zum Startbildschirm hinzufügen", dann startet sie wie eine App.
 4. Unter **Vorrat** den **Wochenplan** einstellen: Wochentage und Uhrzeit wählen, „Automatisch aus dem Vorrat posten" einschalten, speichern.
@@ -21,7 +20,7 @@ npm start
 
 Ab jetzt postet der Server selbstständig: Zu jedem Termin des Wochenplans nimmt er das **älteste** Video aus dem Vorrat und veröffentlicht es. Du musst nur dafür sorgen, dass der Vorrat nicht leer läuft.
 
-Lädt die Seite nicht? Dann `./setup.sh --firewall` ausführen und prüfen, dass das Handy im selben WLAN ist (nicht Mobilfunk, kein Gast-WLAN). Weitere Optionen: `./setup.sh --service` startet den Server automatisch mit dem Rechner, `./setup.sh --tunnel` installiert `cloudflared` (nur für Instagram nötig, siehe unten).
+Lädt die Seite nicht? Dann `./setup.sh --firewall` ausführen und prüfen, dass das Handy im selben WLAN ist (nicht Mobilfunk, kein Gast-WLAN). Weitere Optionen: `./setup.sh --no-service` richtet keinen Autostart-Dienst ein, `./setup.sh --tunnel` installiert `cloudflared` (nur für Instagram nötig, siehe unten).
 
 ### API-Schlüssel eintragen
 
@@ -64,7 +63,7 @@ Läuft über die **Instagram API mit Instagram-Login**. Es wird **keine Facebook
 5. `PUBLIC_BASE_URL`: Instagram holt das Video selbst von einer öffentlichen HTTPS-Adresse. Dafür läuft neben der App ein kleiner **Medienserver** (Port `MEDIA_PORT`, Standard 3001, nur lokal erreichbar), der ausschließlich `/media/<zufälliger-Dateiname>` ausliefert. **Nur diesen Port** durch einen Cloudflare Tunnel ins Internet stellen, nie die App (Port 3000). Der Tunnel braucht keine Portfreigabe im Router, weil er die Verbindung von deinem PC nach außen aufbaut.
    - **Automatisch (Standard):** `PUBLIC_BASE_URL` leer lassen und `cloudflared` installieren (`./setup.sh --tunnel`). Im Live-Modus (`IG_MODE=live`) startet der Server den Schnelltunnel selbst, liest die `https://….trycloudflare.com`-Adresse aus, prüft vor jedem Instagram-Upload, dass sie erreichbar ist, und startet den Tunnel bei Ausfall neu. Die Adresse ändert sich dabei, das stört nicht, weil sie bei jedem Upload frisch gelesen wird. Schnelltunnel haben aber keine Verfügbarkeitszusage von Cloudflare.
    - **Fest:** Wer eine eigene Domain hat, richtet einen benannten Tunnel ein und trägt die Adresse als `PUBLIC_BASE_URL` ein. Dann startet der Server keinen eigenen Tunnel.
-   - Damit alles ohne Zutun läuft, den Server als Dienst einrichten: `./setup.sh --service` (der Tunnel startet mit dem Server).
+   - Damit alles ohne Zutun läuft, den Server als Dienst laufen lassen (das macht `./setup.sh` standardmäßig, der Tunnel startet mit dem Server).
 - **Testen:** (1) Adresse prüfen (beim Schnelltunnel steht sie in der Serverausgabe als `Tunnel: …`): `<Adresse>/media/test` muss „404“ liefern (der Tunnel erreicht den Medienserver), die App selbst (`<Adresse>/api/status`) darf von außen **nicht** erreichbar sein. (2) Token prüfen: der `curl` aus Schritt 4 muss `user_id` und `username` liefern. (3) `IG_MODE=live` setzen und **ein kurzes Wegwerf-Video** nur für Instagram posten (Hochformat 9:16, MP4, über 3 Sekunden), danach das Reel auf Instagram wieder löschen. Achtung: Die Duplikatsperre merkt sich dieses Video, es lässt sich nicht noch einmal hochladen.
 - Solange die Meta-App im Entwicklermodus ist, funktioniert sie nur für Konten, die als Tester eingetragen sind. Das reicht hier, ein App-Review ist nicht nötig.
 

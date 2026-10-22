@@ -1,20 +1,21 @@
 #!/usr/bin/env bash
 # TourPost – Einrichtung auf einem neuen Rechner.
-# Aufruf:  ./setup.sh [--firewall] [--service] [--tunnel]
-#   --firewall  Port in ufw für das Heimnetz freigeben (braucht sudo)
-#   --service   Server als systemd-Benutzerdienst einrichten (startet automatisch)
-#   --tunnel    cloudflared installieren (öffentliche Adresse für Instagram, siehe README)
+# Aufruf:  ./setup.sh [--firewall] [--tunnel] [--no-service]
+#   --firewall    Port in ufw für das Heimnetz freigeben (braucht sudo)
+#   --tunnel      cloudflared installieren (öffentliche Adresse für Instagram, siehe README)
+#   --no-service  keinen Autostart-Dienst einrichten (Standard: Server läuft als systemd-Benutzerdienst)
 set -euo pipefail
 
 cd "$(dirname "$0")"
 
 WANT_FIREWALL=0
-WANT_SERVICE=0
+WANT_SERVICE=1
 WANT_TUNNEL=0
 for arg in "$@"; do
   case "$arg" in
     --firewall) WANT_FIREWALL=1 ;;
-    --service)  WANT_SERVICE=1 ;;
+    --service)  WANT_SERVICE=1 ;;   # Standard, bleibt als Option erhalten
+    --no-service) WANT_SERVICE=0 ;;
     --tunnel)   WANT_TUNNEL=1 ;;
     -h|--help)  sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unbekannte Option: $arg (siehe --help)"; exit 1 ;;
@@ -107,7 +108,17 @@ fi
 # ---------- systemd-Dienst ----------
 if [ "$WANT_SERVICE" = 1 ]; then
   step "Autostart (systemd-Benutzerdienst)"
-  if command -v systemctl >/dev/null; then
+  if ! command -v systemctl >/dev/null; then
+    warn "systemctl nicht gefunden – Autostart übersprungen, Server mit 'npm start' starten."
+    WANT_SERVICE=0
+  elif [ -z "${XDG_RUNTIME_DIR:-}" ] || ! systemctl --user show-environment >/dev/null 2>&1; then
+    warn "Keine systemd-Benutzersitzung erreichbar – Autostart übersprungen, Server mit 'npm start' starten."
+    WANT_SERVICE=0
+  else
+    # läuft schon ein Server (z. B. von Hand gestartet), würde der Dienst am belegten Port scheitern
+    if ! systemctl --user is-active --quiet tourpost.service && ss -ltn 2>/dev/null | grep -qE "[:.]$PORT\s"; then
+      warn "Port $PORT ist belegt (läuft schon ein Server?). Den alten Server beenden, sonst startet der Dienst nicht."
+    fi
     UNIT_DIR="$HOME/.config/systemd/user"
     mkdir -p "$UNIT_DIR"
     cat > "$UNIT_DIR/tourpost.service" <<EOF
@@ -117,18 +128,24 @@ After=network-online.target
 
 [Service]
 WorkingDirectory=$PWD
+# cloudflared (Tunnel für Instagram) liegt oft in ~/.local/bin, das der Dienst sonst nicht im PATH hat
+Environment=PATH=$HOME/.local/bin:$(dirname "$(command -v node)"):/usr/local/bin:/usr/bin:/bin
 ExecStart=$(command -v node) server/index.js
 Restart=on-failure
+RestartSec=5
 
 [Install]
 WantedBy=default.target
 EOF
     systemctl --user daemon-reload
-    systemctl --user enable --now tourpost.service
-    ok "Dienst 'tourpost' läuft und startet automatisch"
-    warn "Damit er auch ohne Login startet:  sudo loginctl enable-linger $USER"
-  else
-    warn "systemctl nicht gefunden – Autostart übersprungen."
+    systemctl --user enable tourpost.service >/dev/null 2>&1
+    systemctl --user restart tourpost.service
+    ok "Dienst 'tourpost' läuft und startet automatisch (Protokoll: journalctl --user -u tourpost -f)"
+    if [ "$(loginctl show-user "$USER" -p Linger --value 2>/dev/null)" = yes ]; then
+      ok "Start auch ohne Anmeldung aktiv (linger)"
+    else
+      warn "Damit der Server auch ohne Login nach einem Neustart startet:  sudo loginctl enable-linger $USER"
+    fi
   fi
 fi
 
@@ -177,10 +194,12 @@ fi
 
 if [ "$WANT_SERVICE" = 0 ]; then
   echo "Server starten:   npm start"
+else
+  echo "Server läuft als Dienst:  systemctl --user status|restart|stop tourpost"
 fi
 echo "Im Handy-Browser: $URL   (Handy im selben WLAN)"
 if [ "$WANT_TUNNEL" = 1 ]; then
-  echo "Tunnel für Instagram (nur den Medienserver, Port ${MEDIA_PORT:-3001}):  cloudflared tunnel --url http://127.0.0.1:${MEDIA_PORT:-3001}"
+  echo "Tunnel für Instagram: startet der Server im Live-Modus (IG_MODE=live) selbst, nur auf den Medienserver (Port ${MEDIA_PORT:-3001})."
 fi
 
 if [ -n "$IP" ]; then
