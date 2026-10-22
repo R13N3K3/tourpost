@@ -2,6 +2,14 @@
 
 Handy-Web-App (Node/Express), die Videos als Instagram Reel, YouTube Short und auf TikTok veröffentlicht. Oberfläche und Texte sind auf **Deutsch**. Details zu Aufbau und Bedienung stehen in der `README.md`.
 
+## Gehört zu Tourbuchung
+
+Dieses Projekt (**TourPost**, `~/Schreibtisch/tourpost`) und **Tourbuchung** (`~/Schreibtisch/tourbuchung`, eigenes Repository `R13N3K3/tourbuchung`, eigene `CLAUDE.md`) gehören inhaltlich zusammen: Beide dienen demselben Veranstalter für seine Pilztouren. TourPost macht die Werbung (Videos auf Instagram, YouTube, TikTok), Tourbuchung nimmt Anmeldungen und Zahlungen entgegen. Technisch sind sie **getrennt**: eigener Code, eigene Datenbank/Daten, eigene `.env`, eigener Port (TourPost 3000, Tourbuchung 3200), keine gemeinsamen Zugangsdaten.
+
+- Die Seite „Touren" in dieser App (`public/touren.html`) ist noch ein Platzhalter. Sie könnte später auf die Anmeldeseite von Tourbuchung verlinken oder deren freie Termine anzeigen. Noch nicht gebaut.
+- **Sicherheit bleibt getrennt:** Tourbuchung ist bewusst öffentlich erreichbar (mit Passwort für `/admin/`). TourPost hat keinen Zugangsschutz und darf **nie** über denselben Tunnel oder dieselbe Adresse erreichbar sein. Durch einen Tunnel nach außen darf bei TourPost weiterhin nur der Medienserver (Port `MEDIA_PORT`).
+- Änderungen, die beide betreffen (zum Beispiel gemeinsamer Name des Veranstalters, Texte, Links), in beiden Projekten nachziehen und in der jeweils anderen `CLAUDE.md` vermerken.
+
 ## Bei Änderungen an der Oberfläche automatisch tun
 
 Ändert sich etwas, das man in der App sieht (HTML, CSS, Texte, neue oder geänderte Seiten in `public/`):
