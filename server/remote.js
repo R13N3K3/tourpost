@@ -15,6 +15,8 @@ const { notify } = require('./notify');
 const COOKIE = 'tp_session';
 const SESSION_MAX_MS = 12 * 3600e3;     // absolut
 const SESSION_IDLE_MS = 2 * 3600e3;     // ohne Aktivität
+const REMEMBER_MAX_MS = 90 * 24 * 3600e3;   // „Dieses Gerät merken": absolut
+const REMEMBER_IDLE_MS = 30 * 24 * 3600e3;  // ohne Aktivität
 const MAX_UPLOAD_MB = 100;              // Cloudflare lässt im kostenlosen Tarif etwa 100 MB pro Anfrage zu
 const IP_FAILS = 5;                     // Fehlversuche pro Adresse, danach Sperre
 const GLOBAL_FAILS = 20;                // Fehlversuche insgesamt pro Stunde, danach Sperre für alle
@@ -52,7 +54,9 @@ function createGate({ authFile = auth.DEFAULT_FILE, sessionFile, now = () => Dat
     const s = sessions.get(key);
     if (!s) return null;
     const t = now();
-    if (t - s.created > SESSION_MAX_MS || t - s.last > SESSION_IDLE_MS) { sessions.delete(key); persist(); return null; }
+    const maxMs = s.remember ? REMEMBER_MAX_MS : SESSION_MAX_MS;
+    const idleMs = s.remember ? REMEMBER_IDLE_MS : SESSION_IDLE_MS;
+    if (t - s.created > maxMs || t - s.last > idleMs) { sessions.delete(key); persist(); return null; }
     if (t - s.last > 60_000) { s.last = t; persist(); }
     return { key, ...s };
   }
@@ -123,7 +127,7 @@ function createGate({ authFile = auth.DEFAULT_FILE, sessionFile, now = () => Dat
       return res.status(429).json({ error: 'Zu viele Versuche. Bitte später erneut versuchen.' });
     }
     const cred = auth.load(authFile);
-    const { password, code } = req.body || {};
+    const { password, code, remember } = req.body || {};
     let ok = false;
     if (cred && typeof password === 'string' && password.length <= 200) {
       // beide Prüfungen immer ausführen, damit nicht erkennbar ist, welche gescheitert ist
@@ -139,10 +143,11 @@ function createGate({ authFile = auth.DEFAULT_FILE, sessionFile, now = () => Dat
     }
     fails.delete(ip);
     const token = crypto.randomBytes(32).toString('hex');
-    sessions.set(sha(token), { created: now(), last: now() });
+    const merken = remember === true;
+    sessions.set(sha(token), { created: now(), last: now(), remember: merken });
     persist();
-    res.cookie(COOKIE, token, { httpOnly: true, secure: true, sameSite: 'strict', path: '/', maxAge: SESSION_MAX_MS });
-    alert({ title: 'TourPost: Anmeldung von außen', message: `Erfolgreich angemeldet, Adresse ${ip}.`, priority: 3, tags: ['key'] });
+    res.cookie(COOKIE, token, { httpOnly: true, secure: true, sameSite: 'strict', path: '/', maxAge: merken ? REMEMBER_MAX_MS : SESSION_MAX_MS });
+    alert({ title: 'TourPost: Anmeldung von außen', message: `Erfolgreich angemeldet, Adresse ${ip}${merken ? ' (Gerät wird 90 Tage gemerkt)' : ''}.`, priority: 3, tags: ['key'] });
     res.json({ ok: true });
   });
 

@@ -10,7 +10,7 @@ form.addEventListener('submit', async e => {
     const res = await fetch('/api/remote/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: form.password.value, code: form.code.value.trim() }),
+      body: JSON.stringify({ password: form.password.value, code: form.code.value.trim(), remember: form.remember.checked }),
     });
     if (res.ok) { location.replace('/'); return; }
     const data = await res.json().catch(() => ({}));

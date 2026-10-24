@@ -146,3 +146,17 @@ test('ohne eingerichtete Zugangsdaten ist keine Anmeldung möglich', async () =>
   s.close();
   assert.equal(r.status, 401);
 });
+
+test('„Gerät merken": Sitzung hält Tage, aber nicht für immer', async () => {
+  clock += 60_000;
+  const cookie = cookieFrom(await login({ remember: true }));
+  clock += 60_000;   // neuer Einmalcode nötig
+  assert.match((await login({ remember: true })).headers.get('set-cookie') || '', /Max-Age=7776000/);
+  for (let tag = 1; tag <= 3; tag++) { clock += 10 * 3600e3 * 2.4; assert.equal((await get('/api/queue', cookie)).status, 200); }   // über Nacht, noch drin
+  clock += 31 * 864e5;                                                    // 31 Tage nichts getan
+  assert.equal((await get('/api/queue', cookie)).status, 401);
+  clock += 60_000;
+  const c2 = cookieFrom(await login({ remember: true }));
+  for (let i = 0; i < 91; i++) { clock += 864e5; await get('/api/queue', c2); }   // täglich benutzt, aber nach 90 Tagen trotzdem Schluss
+  assert.equal((await get('/api/queue', c2)).status, 401);
+});

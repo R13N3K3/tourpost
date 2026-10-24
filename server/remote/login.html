@@ -16,6 +16,7 @@
       <input id="password" name="password" type="password" autocomplete="current-password" required>
       <label for="code">Code aus der Authenticator-App</label>
       <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+      <label class="check"><input id="remember" type="checkbox"> Dieses Gerät 90 Tage merken</label>
       <p id="fehler" role="alert" hidden></p>
       <button type="submit" id="senden">Anmelden</button>
     </form>
