@@ -118,7 +118,7 @@ Läuft über die **Content Posting API** (Direct Post, die Datei wird direkt vom
 
 Standard ist der **Heimnetz-Modus**: Die App ist nur im WLAN erreichbar, ohne Login. Zusätzlich lässt sich ein **Fernzugriff** einschalten, damit du auch unterwegs Videos hochladen kannst, ohne dass der Router etwas freigeben muss (der Tunnel baut die Verbindung von deinem PC nach außen auf).
 
-Einrichten (einmal, am PC):
+Einrichten (einmal, am PC): `./setup.sh` fragt im Terminal, ob der Fernzugriff eingerichtet werden soll. Später ein- oder ausschalten geht mit demselben Skript (es fragt dann, ob der Fernzugriff aus- oder wieder eingeschaltet werden soll), ohne Rückfrage mit `./setup.sh --no-remote`. Direkt einrichten:
 ```bash
 npm run remote-setup     # oder: ./setup.sh --remote
 ```

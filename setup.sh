@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # TourPost – Einrichtung auf einem neuen Rechner.
-# Aufruf:  ./setup.sh [--firewall] [--tunnel] [--no-service]
+# Aufruf:  ./setup.sh [--firewall] [--tunnel] [--remote] [--no-remote] [--no-service]
 #   --firewall    Port in ufw für das Heimnetz freigeben (braucht sudo)
 #   --tunnel      cloudflared installieren (öffentliche Adresse für Instagram, siehe README)
 #   --remote      Fernzugriff einrichten (Passwort und Authenticator-Code anlegen, siehe README)
+#   --no-remote   die Rückfrage zum Fernzugriff überspringen (ohne diese Option fragt das Skript im Terminal)
 #   --no-service  keinen Autostart-Dienst einrichten (Standard: Server läuft als systemd-Benutzerdienst)
 set -euo pipefail
 
@@ -13,6 +14,7 @@ WANT_FIREWALL=0
 WANT_SERVICE=1
 WANT_TUNNEL=0
 WANT_REMOTE=0
+ASK_REMOTE=1
 for arg in "$@"; do
   case "$arg" in
     --firewall) WANT_FIREWALL=1 ;;
@@ -20,7 +22,8 @@ for arg in "$@"; do
     --no-service) WANT_SERVICE=0 ;;
     --tunnel)   WANT_TUNNEL=1 ;;
     --remote)   WANT_REMOTE=1; WANT_TUNNEL=1 ;;   # braucht cloudflared
-    -h|--help)  sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --no-remote) ASK_REMOTE=0 ;;
+    -h|--help)  sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unbekannte Option: $arg (siehe --help)"; exit 1 ;;
   esac
 done
@@ -95,6 +98,38 @@ lan_ip() {
   fi
 }
 IP=$(lan_ip || true)
+
+# ---------- Rückfrage: Fernzugriff ----------
+# Nur im Terminal und nur, wenn --remote / --no-remote nicht schon etwas festlegen.
+ask_yn() { local a; read -r -p "    $1 [j/N] " a; case "$a" in j|J|ja|Ja|JA|y|Y|yes) return 0 ;; *) return 1 ;; esac; }
+set_remote_mode() {
+  node -e "require('./server/util').setEnvVar('REMOTE_MODE', process.argv[1])" "$1"
+  [ "$WANT_SERVICE" = 1 ] || warn "Ohne Dienst gilt die Änderung erst nach einem Neustart des Servers (npm start)."
+}
+
+if [ "$ASK_REMOTE" = 1 ] && [ "$WANT_REMOTE" = 0 ] && [ -t 0 ]; then
+  step "Fernzugriff (von unterwegs)"
+  REMOTE_CUR=$(grep -E '^REMOTE_MODE=' .env | tail -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+  if [ -f data/remote-auth.json ] && [ "$REMOTE_CUR" = tunnel ]; then
+    ok "Fernzugriff ist eingeschaltet (Login mit Passwort und Authenticator-Code)"
+    if ask_yn "Ausschalten (nur noch im Heimnetz erreichbar)?"; then
+      set_remote_mode off; ok "Fernzugriff ausgeschaltet (REMOTE_MODE=off)"
+    fi
+  elif [ -f data/remote-auth.json ]; then
+    echo "    Der Fernzugriff ist eingerichtet, aber ausgeschaltet."
+    if ask_yn "Wieder einschalten?"; then
+      set_remote_mode tunnel; WANT_TUNNEL=1; ok "Fernzugriff eingeschaltet (REMOTE_MODE=tunnel)"
+    fi
+  else
+    echo "    Die App ist im Heimnetz (WLAN) erreichbar. Sie lässt sich zusätzlich von unterwegs öffnen,"
+    echo "    nur mit Passwort UND Code aus einer Authenticator-App. Der Router braucht dafür keine Freigabe."
+    if ask_yn "Fernzugriff jetzt einrichten?"; then
+      WANT_REMOTE=1; WANT_TUNNEL=1
+    else
+      ok "Übersprungen. Später: ./setup.sh --remote"
+    fi
+  fi
+fi
 
 # ---------- Firewall ----------
 if [ "$WANT_FIREWALL" = 1 ]; then
