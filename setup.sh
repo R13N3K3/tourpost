@@ -1,14 +1,41 @@
 #!/usr/bin/env bash
 # TourPost – Einrichtung auf einem neuen Rechner.
-# Aufruf:  ./setup.sh [--firewall] [--tunnel] [--remote] [--no-remote] [--no-service]
-#   --firewall    Port in ufw für das Heimnetz freigeben (braucht sudo)
-#   --tunnel      cloudflared installieren (öffentliche Adresse für Instagram, siehe README)
-#   --remote      Fernzugriff einrichten (Passwort und Authenticator-Code anlegen, siehe README)
-#   --no-remote   die Rückfrage zum Fernzugriff überspringen (ohne diese Option fragt das Skript im Terminal)
-#   --no-service  keinen Autostart-Dienst einrichten (Standard: Server läuft als systemd-Benutzerdienst)
+# Aufruf: ./setup.sh [Optionen]   (Hilfe: ./setup.sh --help)
 set -euo pipefail
 
 cd "$(dirname "$0")"
+
+usage() {
+  cat <<'HILFE'
+TourPost – Einrichtung auf einem neuen Rechner
+
+Aufruf:  ./setup.sh [Optionen]
+
+Ohne Optionen passiert Folgendes:
+  1. Node.js prüfen (fehlt es, wird es per nvm ohne sudo installiert) und npm install
+  2. uploads/ anlegen und .env aus .env.example erstellen (bestehende .env bleibt unverändert)
+  3. im Terminal fragen, ob der Fernzugriff von unterwegs ein- oder ausgeschaltet werden soll
+  4. den Server als systemd-Benutzerdienst einrichten und starten (startet automatisch, bei Absturz neu)
+  5. die Adresse fürs Handy und einen QR-Code anzeigen
+
+Optionen:
+  --firewall     Port in ufw für das Heimnetz freigeben (braucht sudo)
+  --tunnel       cloudflared installieren (öffentliche Adresse für Instagram)
+  --remote       Fernzugriff direkt einrichten: Passwort und Authenticator-Code anlegen (installiert auch cloudflared)
+  --no-remote    Rückfrage zum Fernzugriff überspringen
+  --no-service   keinen Dienst einrichten, der Server wird dann von Hand mit "npm start" gestartet
+  --service      Dienst einrichten (ist schon der Standard, die Option bleibt aus Gewohnheit erhalten)
+  -h, --help     diese Hilfe anzeigen
+
+Beispiele:
+  ./setup.sh                         Erstinstallation mit allen Rückfragen
+  ./setup.sh --firewall              zusätzlich Port für das WLAN freigeben
+  ./setup.sh --remote                Fernzugriff einrichten
+  ./setup.sh --no-service --no-remote  nur Abhängigkeiten und Konfiguration, ohne Dienst und ohne Rückfrage
+
+Mehr dazu in der README.md (Abschnitte „Einrichtung & Nutzung" und „Fernzugriff von unterwegs").
+HILFE
+}
 
 WANT_FIREWALL=0
 WANT_SERVICE=1
@@ -23,8 +50,8 @@ for arg in "$@"; do
     --tunnel)   WANT_TUNNEL=1 ;;
     --remote)   WANT_REMOTE=1; WANT_TUNNEL=1 ;;   # braucht cloudflared
     --no-remote) ASK_REMOTE=0 ;;
-    -h|--help)  sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-    *) echo "Unbekannte Option: $arg (siehe --help)"; exit 1 ;;
+    -h|--help)  usage; exit 0 ;;
+    *) echo "Unbekannte Option: $arg"; echo; usage; exit 1 ;;
   esac
 done
 
