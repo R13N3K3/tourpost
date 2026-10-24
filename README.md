@@ -20,7 +20,7 @@ cd tourpost
 
 Ab jetzt postet der Server selbstständig: Zu jedem Termin des Wochenplans nimmt er das **älteste** Video aus dem Vorrat und veröffentlicht es. Du musst nur dafür sorgen, dass der Vorrat nicht leer läuft.
 
-Lädt die Seite nicht? Dann `./setup.sh --firewall` ausführen und prüfen, dass das Handy im selben WLAN ist (nicht Mobilfunk, kein Gast-WLAN). Weitere Optionen: `./setup.sh --no-service` richtet keinen Autostart-Dienst ein, `./setup.sh --tunnel` installiert `cloudflared` (nur für Instagram nötig, siehe unten).
+Lädt die Seite nicht? Dann `./setup.sh --firewall` ausführen und prüfen, dass das Handy im selben WLAN ist (nicht Mobilfunk, kein Gast-WLAN). Weitere Optionen: `./setup.sh --no-service` richtet keinen Autostart-Dienst ein, `./setup.sh --remote` richtet den **Fernzugriff von unterwegs** ein (Login mit Passwort und Authenticator-Code, siehe „Fernzugriff von unterwegs"), `./setup.sh --tunnel` installiert `cloudflared` (nur für Instagram nötig, siehe unten).
 
 ### API-Schlüssel eintragen
 
@@ -37,6 +37,8 @@ Alle Zugangsdaten stehen in der Datei **`.env`** im Projektordner (`./setup.sh` 
 | `IG_ACCESS_TOKEN` | Instagram-Token aus der Meta-Developer-App (ca. 60 Tage gültig) |
 | `PUBLIC_BASE_URL` | Optional: feste HTTPS-Adresse des **Medienservers** (eigener Cloudflare-Tunnel). Leer lassen, dann startet der Server im Live-Modus selbst einen Schnelltunnel (`server/tunnel.js`). Instagram lädt das Video von dort ab |
 | `MEDIA_PORT` | Port des Medienservers, Standard 3001 |
+| `REMOTE_MODE` | `off` = nur Heimnetz (Standard), `tunnel` = zusätzlich Fernzugriff mit Login (siehe „Fernzugriff von unterwegs") |
+| `REMOTE_PORT` | Port der Fern-Tür, Standard 3002 (nur lokal, nur auf diesen zeigt der Fern-Tunnel) |
 | `YT_MODE` | `test` oder `live` für YouTube |
 | `YT_CLIENT_ID`, `YT_CLIENT_SECRET` | OAuth-Client aus der Google Cloud Console |
 | `YT_REFRESH_TOKEN` | Wird von `npm run youtube-auth` eingetragen, nicht von Hand |
@@ -108,6 +110,7 @@ Läuft über die **Content Posting API** (Direct Post, die Datei wird direkt vom
 - **Vorrat:** Hochgeladene Videos warten auf dem Server. Die Reihenfolge ist „ältestes zuerst". Die App zeigt zu jedem Video den voraussichtlichen Termin und wie lange der Vorrat reicht.
 - **Wochenplan:** Pro Wochentag eine Uhrzeit (Standard: Freitag und Sonntag um 12:00, änderbar). Alle 10 Sekunden prüft der Server, ob ein Termin da ist, und veröffentlicht dann **ein** Video. Zeiten gelten in der Zeitzone des Servers. Verpasste Termine (Server war aus) holt er bis zu 12 Stunden später nach, ältere nicht.
 - **Weitere Optionen beim Hochladen:** „Zu einem festen Zeitpunkt" für ein einzelnes Video und „Sofort (zum Testen)".
+- **Zwei Modi:** Im **Heimnetz** (Standard) ist die App über das WLAN erreichbar, ohne Login. Mit dem **Fernzugriff** kommst du zusätzlich von unterwegs hinein, nur mit Passwort und Authenticator-Code und mit „Dieses Gerät 90 Tage merken". Einrichtung und Absicherung stehen unter „Fernzugriff von unterwegs".
 - **Videoprüfung:** Beim Hochladen prüft der Server das Video mit `ffprobe` (muss installiert sein, sonst entfällt die Prüfung). Abgelehnt wird eine Datei, die kein lesbares Video ist, und für Instagram ein Video unter 3 Sekunden. Als gelbe **Warnung** (der Upload klappt trotzdem) erscheinen Querformat, YouTube-Videos über 3 Minuten, Instagram-Videos über 15 Minuten und ein anderer Codec als H.264. Die Warnungen stehen auf der Video-Seite und im Vorrat am Video.
 - **Veröffentlichen:** Instagram holt das Video über eine öffentliche URL ab und zeigt es als Reel (Instagram API). YouTube und TikTok bekommen die Datei direkt vom Server. Danach wird die Videodatei gelöscht.
 
@@ -181,6 +184,7 @@ Neue Unterseiten werden in `public/js/nav.js` eingetragen, neue Plattformen als 
 | `IG_ACCESS_TOKEN` | langlebiges Meta-Access-Token |
 | `PUBLIC_BASE_URL` | feste öffentliche Adresse des Medienservers, leer = automatischer Schnelltunnel |
 | `NTFY_TOPIC` | ntfy-Thema für Push-Nachrichten (leer = aus) |
+| `REMOTE_MODE` | `off` oder `tunnel`: Fernzugriff mit Passwort und Authenticator-Code |
 | `NTFY_SERVER` | eigener ntfy-Server, Standard `https://ntfy.sh` |
 | `PORT` | Port, Standard 3000 |
 
