@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>TourPost – Anmeldung</title>
+  <link rel="stylesheet" href="/remote-login.css">
+  <script src="/remote-login.js" defer></script>
+</head>
+<body>
+  <main>
+    <h1>TourPost</h1>
+    <form id="form" autocomplete="on">
+      <label for="password">Passwort</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <label for="code">Code aus der Authenticator-App</label>
+      <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+      <p id="fehler" role="alert" hidden></p>
+      <button type="submit" id="senden">Anmelden</button>
+    </form>
+  </main>
+</body>
+</html>

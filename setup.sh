@@ -3,6 +3,7 @@
 # Aufruf:  ./setup.sh [--firewall] [--tunnel] [--no-service]
 #   --firewall    Port in ufw für das Heimnetz freigeben (braucht sudo)
 #   --tunnel      cloudflared installieren (öffentliche Adresse für Instagram, siehe README)
+#   --remote      Fernzugriff einrichten (Passwort und Authenticator-Code anlegen, siehe README)
 #   --no-service  keinen Autostart-Dienst einrichten (Standard: Server läuft als systemd-Benutzerdienst)
 set -euo pipefail
 
@@ -11,13 +12,15 @@ cd "$(dirname "$0")"
 WANT_FIREWALL=0
 WANT_SERVICE=1
 WANT_TUNNEL=0
+WANT_REMOTE=0
 for arg in "$@"; do
   case "$arg" in
     --firewall) WANT_FIREWALL=1 ;;
     --service)  WANT_SERVICE=1 ;;   # Standard, bleibt als Option erhalten
     --no-service) WANT_SERVICE=0 ;;
     --tunnel)   WANT_TUNNEL=1 ;;
-    -h|--help)  sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --remote)   WANT_REMOTE=1; WANT_TUNNEL=1 ;;   # braucht cloudflared
+    -h|--help)  sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unbekannte Option: $arg (siehe --help)"; exit 1 ;;
   esac
 done
@@ -180,6 +183,15 @@ if [ "$WANT_TUNNEL" = 1 ]; then
   else
     warn "Paketmanager hat nicht geklappt oder fehlt – lade die Datei direkt herunter."
     download_cloudflared || warn "Installation nicht möglich – siehe https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/"
+  fi
+fi
+
+# ---------- Fernzugriff ----------
+if [ "$WANT_REMOTE" = 1 ]; then
+  step "Fernzugriff (Passwort und Authenticator-Code)"
+  node scripts/remote-setup.js
+  if [ "$WANT_SERVICE" = 1 ] && command -v systemctl >/dev/null; then
+    systemctl --user restart tourpost.service && ok "Dienst neu gestartet, die Adresse für unterwegs kommt per ntfy aufs Handy (NTFY_TOPIC) und steht im Protokoll"
   fi
 fi
 

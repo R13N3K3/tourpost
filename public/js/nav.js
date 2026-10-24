@@ -60,8 +60,26 @@ function renderMenuGrid(container) {
     </a>`).join('');
 }
 
+// Nur über den Fernzugriff (mit Login) gibt es diese Schnittstelle: dann erscheint oben „Abmelden"
+async function renderLogout() {
+  const bar = document.querySelector('.topbar');
+  if (!bar) return;
+  try {
+    if (!(await fetch('/api/remote/me')).ok) return;
+  } catch { return; }
+  const btn = document.createElement('button');
+  btn.className = 'logout';
+  btn.textContent = 'Abmelden';
+  btn.addEventListener('click', async () => {
+    await fetch('/api/remote/logout', { method: 'POST' });
+    location.replace('/login');
+  });
+  bar.appendChild(btn);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   renderBottomNav();
+  renderLogout();
   const grid = document.querySelector('[data-menu-grid]');
   if (grid) renderMenuGrid(grid);
 });

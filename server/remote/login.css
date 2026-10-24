@@ -1,0 +1,10 @@
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #061a3a; color: #eef5ff; font: 16px/1.5 system-ui, sans-serif; }
+main { width: min(380px, 92vw); padding: 24px; border-radius: 20px; background: rgba(255, 255, 255, 0.10); border: 1px solid rgba(255, 255, 255, 0.22); }
+h1 { margin: 0 0 12px; font-size: 1.4rem; }
+label { display: block; margin: 14px 0 4px; font-size: 0.9rem; opacity: 0.8; }
+input { width: 100%; padding: 12px; font: inherit; color: inherit; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 12px; }
+input:focus { outline: 3px solid rgba(79, 195, 247, 0.6); }
+button { width: 100%; margin-top: 18px; padding: 13px; font: inherit; font-weight: 700; color: #04223f; background: #4fc3f7; border: 0; border-radius: 12px; cursor: pointer; }
+button:disabled { opacity: 0.6; }
+#fehler { margin: 12px 0 0; color: #ff8d9a; }

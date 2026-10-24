@@ -36,6 +36,7 @@ Der Nutzer muss nicht jedes Mal daran erinnern.
 - Starten: `node server/index.js` (Port 3000, `PORT` änderbar). Nach Änderungen an `server/` den Server **neu starten**. Statische Dateien in `public/` brauchen keinen Neustart.
 - Alten Server beenden über die PID auf Port 3000 (`ss -ltnp`), **nicht** mit `pkill` (trifft die eigene Shell).
 - `DEBUG_REQUESTS=1` protokolliert jede Anfrage mit Dauer.
+- Tests: `npm test` (Fern-Tür mit Login, Sperren, Sitzungen).
 - Zustand liegt in `data/` (`queue.json`, `settings.json`, `log.jsonl`) und ist nicht im Repo. `uploads/` und `.env` ebenfalls nicht.
 
 ## Todo
@@ -74,7 +75,8 @@ Der Code ist fertig (`server/tiktok.js`, `scripts/tiktok-auth.js`, Direct Post m
 - **Persönliche Nachrichten an Dritte** (zum Beispiel an den Kumpel) und Mailadressen gehören nicht ins Repo. Sie liegen lokal in `notizen/` (per `.gitignore` ausgeschlossen).
 - Ein Video darf nie zweimal gepostet werden: Duplikatsperre über den SHA-256-Hash und das Protokoll `data/log.jsonl` nicht umgehen oder abschwächen.
 - Die Live-Uploads für Instagram und YouTube sind mit echten Konten getestet (Instagram-Tokenverlängerung ebenfalls). TikTok ist nur gegen eine Attrappe geprüft, die Videos bleiben bis zum App-Audit privat. TikTok nicht als „fertig" darstellen.
-- `server/media.js` ist der Medienserver (Port `MEDIA_PORT`, nur 127.0.0.1, liefert ausschließlich `/media/<24 Hex>.<endung>`). **Nur dieser Port** darf durch den Tunnel ins Internet, nie die App auf Port 3000. Den Medienserver nicht um weitere Routen erweitern.
-- Es gibt noch **keinen Zugangsschutz**. Den Server nicht ungeschützt ins Internet stellen.
+- `server/media.js` ist der Medienserver (Port `MEDIA_PORT`, nur 127.0.0.1, liefert ausschließlich `/media/<24 Hex>.<endung>`). Durch den **Medien-Tunnel** darf nur dieser Port ins Internet, nie die App auf Port 3000. Den Medienserver nicht um weitere Routen erweitern.
+- **Fernzugriff** (`server/remote.js`, `REMOTE_MODE=tunnel`): eine zweite, getrennte Tür (`REMOTE_PORT`, 3002) mit eigenem Fern-Tunnel, **jede** Anfrage dort geht durch Login mit Passwort und TOTP-Code. Den Fern-Tunnel nie auf Port 3000 oder den Medienserver zeigen lassen und die Anmeldung nicht abschwächen oder Ausnahmen einbauen (außer `/login` und seine zwei Dateien in `server/remote/`). Änderungen an `remote.js` immer mit `npm test` prüfen. Passwort und Schlüssel (`data/remote-auth.json`) nie ausgeben.
+- Port 3000 (Heimnetz) hat **keinen Zugangsschutz**. Den Server nicht ungeschützt ins Internet stellen. Von außen nur über den Fernzugriff mit Login.
 - Commit-Nachrichten auf Deutsch, am Ende die Co-Authored-By-Zeile der aktuellen Sitzung.
 - `text.html` im Projektordner ist eine alte Vorlage (Tailwind, anderes Design) und nicht Teil der App. Sie liegt aus dem ersten Commit im Repo. Nicht mit der App verwechseln und nicht ändern, löschen nur auf Wunsch des Nutzers.

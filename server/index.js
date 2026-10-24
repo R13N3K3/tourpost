@@ -7,6 +7,7 @@ const { publishReel } = require('./instagram');
 const { publishShort } = require('./youtube');
 const media = require('./media');
 const tunnel = require('./tunnel');
+const remote = require('./remote');
 const videocheck = require('./videocheck');
 const igToken = require('./igtoken');
 const { publishTikTok } = require('./tiktok');
@@ -199,6 +200,7 @@ function autopilot() {
 }
 
 // ---------- Routen ----------
+let remoteState = null;   // Fernzugriff (remote.js), nur wenn REMOTE_MODE=tunnel
 const app = express();
 // Fehlersuche: mit DEBUG_REQUESTS=1 wird jede Anfrage mit Dauer protokolliert
 if (process.env.DEBUG_REQUESTS === '1') {
@@ -306,6 +308,7 @@ app.get('/api/status', (req, res) => {
     next: next ? next.toISOString() : null,
     runwayEnd: runway(count)?.toISOString() || null,
     notifyConfigured: !!process.env.NTFY_TOPIC,
+    remote: remoteState ? { on: true, url: remoteState.tunnel.current() } : { on: false },
     igToken: igToken.info(),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   });
@@ -393,6 +396,8 @@ app.listen(PORT, '0.0.0.0', () => {
   media.start(UPLOAD_DIR, Number(process.env.MEDIA_PORT) || 3001);
   tunnel.start(Number(process.env.MEDIA_PORT) || 3001);
   igToken.start();
+  remoteState = remote.start(app);
+  if (remoteState && !process.env.NTFY_TOPIC) console.warn('Hinweis: Ohne NTFY_TOPIC bekommst du die Adresse für unterwegs nicht aufs Handy, sie steht dann nur im Protokoll (journalctl --user -u tourpost).');
   setInterval(() => { autopilot(); tick(); }, TICK_MS);
   kick();
 });

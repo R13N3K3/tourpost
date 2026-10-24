@@ -111,6 +111,27 @@ Läuft über die **Content Posting API** (Direct Post, die Datei wird direkt vom
 - **Videoprüfung:** Beim Hochladen prüft der Server das Video mit `ffprobe` (muss installiert sein, sonst entfällt die Prüfung). Abgelehnt wird eine Datei, die kein lesbares Video ist, und für Instagram ein Video unter 3 Sekunden. Als gelbe **Warnung** (der Upload klappt trotzdem) erscheinen Querformat, YouTube-Videos über 3 Minuten, Instagram-Videos über 15 Minuten und ein anderer Codec als H.264. Die Warnungen stehen auf der Video-Seite und im Vorrat am Video.
 - **Veröffentlichen:** Instagram holt das Video über eine öffentliche URL ab und zeigt es als Reel (Instagram API). YouTube und TikTok bekommen die Datei direkt vom Server. Danach wird die Videodatei gelöscht.
 
+### Fernzugriff von unterwegs (zweiter Modus)
+
+Standard ist der **Heimnetz-Modus**: Die App ist nur im WLAN erreichbar, ohne Login. Zusätzlich lässt sich ein **Fernzugriff** einschalten, damit du auch unterwegs Videos hochladen kannst, ohne dass der Router etwas freigeben muss (der Tunnel baut die Verbindung von deinem PC nach außen auf).
+
+Einrichten (einmal, am PC):
+```bash
+npm run remote-setup     # oder: ./setup.sh --remote
+```
+Das Skript fragt ein **Passwort** (mindestens 12 Zeichen) und zeigt einen **QR-Code** für eine Authenticator-App (Aegis, Google Authenticator, 2FAS …). Zur Kontrolle gibst du einen Code aus der App ein, dann wird `REMOTE_MODE=tunnel` gesetzt. Server neu starten (`systemctl --user restart tourpost`). Die **Adresse für unterwegs** kommt per ntfy aufs Handy (dafür `NTFY_TOPIC` setzen) und steht im Protokoll (`journalctl --user -u tourpost`). Sie ändert sich bei jedem Start des Tunnels. Ausschalten: `REMOTE_MODE=off` und Server neu starten.
+
+So ist es abgesichert:
+- **Eigene Fern-Tür:** Der Tunnel zeigt nur auf einen eigenen Anschluss (`REMOTE_PORT`, 3002), und dort geht **jede** Anfrage durch die Anmeldung. Der Heimnetz-Port 3000 und der Medienserver sind nie über diese Adresse erreichbar.
+- **Passwort und Einmalcode:** Beides ist nötig. Das Passwort liegt nur als scrypt-Hash in `data/remote-auth.json` (Rechte 600), jeder Code gilt nur einmal. Beides legst du lokal an, nichts davon läuft über den Chat.
+- **Sperren:** Nach 5 Fehlversuchen von einer Adresse 15 Minuten gesperrt, nach 20 Fehlversuchen insgesamt pro Stunde für alle. Fehler dauern immer gleich lang, die Meldung verrät nicht, ob Passwort oder Code falsch war.
+- **Sitzung:** zufälliges Cookie (`HttpOnly`, `Secure`, `SameSite=Strict`), serverseitig gespeichert, nach 2 Stunden Leerlauf oder spätestens 12 Stunden ungültig. Oben in der App steht „Abmelden".
+- **Weitere Schutzmaßnahmen:** Anfragen von fremden Seiten werden abgelehnt (Prüfung von Origin), Sicherheits-Header (CSP, HSTS, kein Einbetten), keine Zwischenspeicherung.
+- **Meldungen aufs Handy:** bei jeder Anmeldung von außen und bei Fehlversuchen (höchstens alle 10 Minuten).
+- **Upload bis 100 MB:** Cloudflare lässt im kostenlosen Tarif etwa so viel pro Anfrage zu. Größere Videos lehnt der Server vorab mit einer klaren Meldung ab (im Heimnetz gehen bis 500 MB).
+
+Grenzen: Die Anmeldeseite ist öffentlich erreichbar, auch wenn man nur sie sieht. Der Schnelltunnel hat keine Verfügbarkeitszusage, und Cloudflare sieht den Verkehr. Sicherheit ist hier mit Tests geprüft, aber nicht von Dritten.
+
 ### Benachrichtigungen
 
 Der Server meldet sich per Push aufs Handy, wenn
@@ -140,7 +161,7 @@ Die geheimen Zugangsdaten liegen nur auf dem Server (`.env`), nie in der App.
 ```
 setup.sh  Einrichtung auf einem neuen Rechner
 public/   App (HTML, CSS, JS, PWA) – Hauptmenü, Video-Seite, Pilztouren-Platzhalter
-server/   Express-Server mit Planer und Wochenplan (schedule.js, settings.js), Vorrat (queue.js), Protokoll (log.js), Videoprüfung (videocheck.js),
+server/   Express-Server mit Planer und Wochenplan (schedule.js, settings.js), Fernzugriff mit Login (remote.js, totp.js, remoteauth.js), Vorrat (queue.js), Protokoll (log.js), Videoprüfung (videocheck.js),
           Benachrichtigung (notify.js), Medienserver (media.js, liefert nur Videodateien für den Tunnel aus), Tunnel (tunnel.js, startet cloudflared) und ein Modul pro Plattform (instagram.js, youtube.js, tiktok.js)
 data/     Vorrat, Wochenplan und Protokoll (queue.json, settings.json, log.jsonl), nicht im Repo
 scripts/  Hilfsskripte (QR-Code, YouTube- und TikTok-Anmeldung)
@@ -167,10 +188,10 @@ Für den Live-Modus braucht es ein Instagram-Business- oder Creator-Konto, eine 
 
 ## Status
 
-Prototyp. Alle drei Plattformen laufen im Testmodus (Upload, Vorrat, Wochenplan mit Autopilot, Status pro Plattform, Protokoll, Duplikatschutz, Warnungen). Instagram und YouTube sind live mit echten Konten getestet. TikTok ist programmiert, aber noch nicht mit einem echten Konto getestet (nur gegen eine Attrappe der Schnittstelle). TikTok-Videos bleiben bis zum App-Audit privat. Es gibt noch keinen Zugangsschutz – den Server nicht ungeschützt ins Internet stellen.
+Prototyp. Alle drei Plattformen laufen im Testmodus (Upload, Vorrat, Wochenplan mit Autopilot, Status pro Plattform, Protokoll, Duplikatschutz, Warnungen). Instagram und YouTube sind live mit echten Konten getestet. TikTok ist programmiert, aber noch nicht mit einem echten Konto getestet (nur gegen eine Attrappe der Schnittstelle). TikTok-Videos bleiben bis zum App-Audit privat. Im Heimnetz-Modus (Port 3000) gibt es keinen Zugangsschutz, den Port nie ins Internet stellen. Über den Fernzugriff ist die App nur mit Passwort und Authenticator-Code erreichbar.
 
 ## Geplant
 
 - TikTok live testen (erst nach dem App-Audit öffentlich)
-- Zugangsschutz
+- Zugangsschutz auch im Heimnetz-Modus (optional)
 - Kundenansicht für gebuchte Pilztouren
