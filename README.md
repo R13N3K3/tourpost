@@ -79,6 +79,7 @@ Läuft über die **Instagram API mit Instagram-Login**. Es wird **keine Facebook
 - Uploads aus nicht geprüften API-Projekten setzt Google zunächst auf **privat**, auch bei `YT_PRIVACY=public`. Dafür gibt es ein Prüfformular von Google. Das Tageskontingent (10.000 Einheiten, ein Upload ca. 1.600) reicht für 1–2 Videos pro Woche.
 
 **TikTok** (Code vorhanden, noch nie live getestet)
+Solange TikTok nicht live getestet ist, ist es auf der Video-Seite **standardmäßig abgewählt** (Haken bei Bedarf selbst setzen). Nach dem ersten erfolgreichen Test in `public/video.html` das `checked` wieder ergänzen.
 Läuft über die **Content Posting API** (Direct Post, die Datei wird direkt vom Server hochgeladen, ohne öffentliche Adresse).
 1. Auf [developers.tiktok.com](https://developers.tiktok.com) anmelden und eine **App** anlegen. Die Produkte **Login Kit** und **Content Posting API** hinzufügen, bei der Content Posting API **Direct Post** aktivieren. Berechtigungen: `user.info.basic` und `video.publish`.
 2. Bei Login Kit eine **Redirect-URI** eintragen: eine beliebige `https`-Adresse, die du kontrollierst oder die einfach eine (Fehler-)Seite zeigt. Dieselbe Adresse als `TT_REDIRECT_URI` in die `.env`. **Client Key** und **Client Secret** der App als `TT_CLIENT_KEY` und `TT_CLIENT_SECRET` eintragen.
@@ -98,10 +99,10 @@ Läuft über die **Content Posting API** (Direct Post, die Datei wird direkt vom
     <td align="center"><b>Touren</b></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/index.png?v=2" width="180" alt="Hauptmenü"></td>
-    <td><img src="docs/screenshots/video.png?v=2" width="180" alt="Video verteilen"></td>
-    <td><img src="docs/screenshots/vorrat.png?v=2" width="180" alt="Vorrat und Planung"></td>
-    <td><img src="docs/screenshots/touren.png?v=2" width="180" alt="Touren"></td>
+    <td><img src="docs/screenshots/index.png?v=3" width="180" alt="Hauptmenü"></td>
+    <td><img src="docs/screenshots/video.png?v=3" width="180" alt="Video verteilen"></td>
+    <td><img src="docs/screenshots/vorrat.png?v=3" width="180" alt="Vorrat und Planung"></td>
+    <td><img src="docs/screenshots/touren.png?v=3" width="180" alt="Touren"></td>
   </tr>
 </table>
 

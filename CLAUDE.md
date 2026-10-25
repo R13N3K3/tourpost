@@ -30,7 +30,7 @@ Der Nutzer muss nicht jedes Mal daran erinnern.
 - **Nie mit den echten Daten.** Eine Kopie von `server/`, `public/`, `package.json` und `node_modules` in ein Wegwerf-Verzeichnis legen, dort auf einem anderen Port starten und Beispieldaten über die API anlegen (ein fertiges Video, ein paar im Vorrat, Wochenplan Freitags/Sonntags 12:00). Das echte `data/` darf nicht verändert werden.
 - Firefox macht das Bild, bevor `fetch` fertig ist. Nur in der Wegwerf-Kopie `api()` in `public/js/vorrat.js` auf einen **synchronen** `XMLHttpRequest` umstellen, damit die Vorrat-Seite vollständig gerendert wird. Diese Änderung nie in das echte Projekt übernehmen.
 - Danach das Bild ansehen und prüfen, bevor es committet wird.
-- **Versionsparameter in der README erhöhen:** GitHub zwischenspeichert README-Bilder (camo), ein ausgetauschtes Bild erscheint sonst oft stundenlang noch alt. Deshalb steht an den Bild-Links in der README `?v=<Zahl>` (zurzeit `?v=2`). Bei jedem neuen Screenshot die Zahl bei allen vier Links um eins erhöhen, im selben Commit.
+- **Versionsparameter in der README erhöhen:** GitHub zwischenspeichert README-Bilder (camo), ein ausgetauschtes Bild erscheint sonst oft stundenlang noch alt. Deshalb steht an den Bild-Links in der README `?v=<Zahl>` (zurzeit `?v=3`). Bei jedem neuen Screenshot die Zahl bei allen vier Links um eins erhöhen, im selben Commit.
 
 ## Server
 
@@ -75,7 +75,7 @@ Der Code ist fertig (`server/tiktok.js`, `scripts/tiktok-auth.js`, Direct Post m
 - **Keine Zugangsdaten** (`.env`, Tokens, SSH-Schlüssel) committen oder im Chat ausgeben.
 - **Persönliche Nachrichten an Dritte** (zum Beispiel an den Kumpel) und Mailadressen gehören nicht ins Repo. Sie liegen lokal in `notizen/` (per `.gitignore` ausgeschlossen).
 - Ein Video darf nie zweimal gepostet werden: Duplikatsperre über den SHA-256-Hash und das Protokoll `data/log.jsonl` nicht umgehen oder abschwächen.
-- Die Live-Uploads für Instagram und YouTube sind mit echten Konten getestet (Instagram-Tokenverlängerung ebenfalls). TikTok ist nur gegen eine Attrappe geprüft, die Videos bleiben bis zum App-Audit privat. TikTok nicht als „fertig" darstellen.
+- Die Live-Uploads für Instagram und YouTube sind mit echten Konten getestet (Instagram-Tokenverlängerung ebenfalls). TikTok ist nur gegen eine Attrappe geprüft, die Videos bleiben bis zum App-Audit privat. TikTok nicht als „fertig" darstellen. Deshalb ist TikTok auf der Video-Seite (`public/video.html`) standardmäßig **nicht** angehakt. Erst nach dem ersten erfolgreichen Live-Test `checked` wieder setzen.
 - `server/media.js` ist der Medienserver (Port `MEDIA_PORT`, nur 127.0.0.1, liefert ausschließlich `/media/<24 Hex>.<endung>`). Durch den **Medien-Tunnel** darf nur dieser Port ins Internet, nie die App auf Port 3000. Den Medienserver nicht um weitere Routen erweitern.
 - **Fernzugriff** (`server/remote.js`, `REMOTE_MODE=tunnel`): eine zweite, getrennte Tür (`REMOTE_PORT`, 3002) mit eigenem Fern-Tunnel, **jede** Anfrage dort geht durch Login mit Passwort und TOTP-Code. Den Fern-Tunnel nie auf Port 3000 oder den Medienserver zeigen lassen und die Anmeldung nicht abschwächen oder Ausnahmen einbauen (außer `/login` und seine zwei Dateien in `server/remote/`). Änderungen an `remote.js` immer mit `npm test` prüfen. Passwort und Schlüssel (`data/remote-auth.json`) nie ausgeben.
 - Port 3000 (Heimnetz) hat **keinen Zugangsschutz**. Den Server nicht ungeschützt ins Internet stellen. Von außen nur über den Fernzugriff mit Login.
