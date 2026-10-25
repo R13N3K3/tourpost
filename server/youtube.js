@@ -41,11 +41,11 @@ async function apiError(res) {
   return new Error('YouTube: ' + msg);
 }
 
-async function publishShort({ filePath, title, description, tags, onStatus }) {
+async function publishShort({ filePath, title, description, tags, onStatus, test }) {
   if (!title) throw new Error('YouTube braucht einen Titel.');
   if (title.length > 100) throw new Error('Der YouTube-Titel darf höchstens 100 Zeichen lang sein.');
 
-  if (process.env.YT_MODE !== 'live') {
+  if (test || process.env.YT_MODE !== 'live') {
     onStatus('Testmodus: YouTube wird simuliert …');
     await sleep(1500);
     return { id: 'test-yt-' + Date.now(), test: true };

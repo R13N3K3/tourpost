@@ -19,8 +19,8 @@ async function graph(path, { method = 'GET', params = {} } = {}) {
   return json;
 }
 
-async function publishReel({ videoUrl, caption, onStatus }) {
-  if (process.env.IG_MODE !== 'live') {
+async function publishReel({ videoUrl, caption, onStatus, test }) {
+  if (test || process.env.IG_MODE !== 'live') {
     onStatus('Testmodus: Instagram wird simuliert …');
     await sleep(1500);
     return { id: 'test-' + Date.now(), test: true };

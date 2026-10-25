@@ -66,8 +66,8 @@ async function putChunk(url, filePath, start, end, total) {
   }
 }
 
-async function publishTikTok({ filePath, caption, onStatus }) {
-  if (process.env.TT_MODE !== 'live') {
+async function publishTikTok({ filePath, caption, onStatus, test }) {
+  if (test || process.env.TT_MODE !== 'live') {
     onStatus('Testmodus: TikTok wird simuliert …');
     await sleep(1500);
     return { id: 'test-tt-' + Date.now(), test: true };

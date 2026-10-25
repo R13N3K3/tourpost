@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const FILE = path.join(__dirname, '..', 'data', 'settings.json');
+const FILE = path.join(process.env.DATA_DIR || path.join(__dirname, '..', 'data'), 'settings.json');
 
 // Standardplan: Freitag und Sonntag um 12:00 (Schalter bleibt aus, bis er in der App eingeschaltet wird)
 let data = { enabled: false, slots: [{ day: 5, time: '12:00' }, { day: 0, time: '12:00' }], lowStock: 2, state: { lastHandled: null, lowNotified: null } };

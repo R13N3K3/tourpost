@@ -6,7 +6,7 @@ const path = require('path');
 const { setEnvVar } = require('./util');
 const { notify } = require('./notify');
 
-const FILE = path.join(__dirname, '..', 'data', 'igtoken.json');
+const FILE = path.join(process.env.DATA_DIR || path.join(__dirname, '..', 'data'), 'igtoken.json');
 const DAY = 86400e3;
 const REFRESH_AFTER = 20 * DAY;   // spätestens nach 20 Tagen verlängern, dann bleiben ~40 Tage zum Wiederholen
 const WARN_BEFORE = 10 * DAY;

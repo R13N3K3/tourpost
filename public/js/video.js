@@ -112,7 +112,7 @@ form.addEventListener('submit', async (e) => {
     const item = await upload(data);
     setProgress(null);
 
-    if (when === 'now') {
+    if (when === 'now' || when === 'test') {
       setStatus('Wird verarbeitet …');
       const done = await waitForItem(item.id);
       setStatus(withWarnings(done, stepsText(done)), done.status === 'done' ? 'ok' : 'error');

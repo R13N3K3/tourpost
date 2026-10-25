@@ -37,7 +37,7 @@ Der Nutzer muss nicht jedes Mal daran erinnern.
 - Starten: `node server/index.js` (Port 3000, `PORT` änderbar). Nach Änderungen an `server/` den Server **neu starten**. Statische Dateien in `public/` brauchen keinen Neustart.
 - Alten Server beenden über die PID auf Port 3000 (`ss -ltnp`), **nicht** mit `pkill` (trifft die eigene Shell).
 - `DEBUG_REQUESTS=1` protokolliert jede Anfrage mit Dauer.
-- Tests: `npm test` (Fern-Tür mit Login, Sperren, Sitzungen).
+- Tests: `npm test` (Fern-Tür mit Login, Sperren, Sitzungen, Testlauf). Tests setzen `DATA_DIR` und `UPLOAD_DIR` auf ein Wegwerf-Verzeichnis, `server/index.js` startet beim Import nichts (nur bei `node server/index.js`).
 - Zustand liegt in `data/` (`queue.json`, `settings.json`, `log.jsonl`) und ist nicht im Repo. `uploads/` und `.env` ebenfalls nicht.
 
 ## Todo

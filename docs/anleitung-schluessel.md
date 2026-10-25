@@ -65,7 +65,7 @@ Instagram holt das Video selbst von einer öffentlichen HTTPS-Adresse ab.
 
 ### 8. Live gehen und testen
 1. `IG_MODE=live` in die `.env`, Server neu starten (er verlängert das Token beim Start automatisch).
-2. Ein kurzes **Hochkant-Video** (9:16, MP4, über 3 Sekunden) nur für Instagram posten, „Sofort".
+2. Ein kurzes **Hochkant-Video** (9:16, MP4, über 3 Sekunden) nur für Instagram posten, „Sofort veröffentlichen". Vorher den Ablauf mit „Nur Test" ausprobieren.
 3. Das Reel in Instagram prüfen und löschen. Die Duplikatsperre merkt sich das Video nach einem erfolgreichen Post.
 
 ### Typische Fehler

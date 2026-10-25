@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const FILE = path.join(__dirname, '..', 'data', 'log.jsonl');
+const FILE = path.join(process.env.DATA_DIR || path.join(__dirname, '..', 'data'), 'log.jsonl');
 
 function read() {
   try {

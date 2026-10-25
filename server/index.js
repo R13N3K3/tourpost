@@ -27,7 +27,7 @@ if (fs.existsSync(envFile)) {
 }
 
 const PORT = process.env.PORT || 3000;
-const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads');
 const MAX_MB = 500;
 const TICK_MS = 10_000;
 const CATCHUP_MS = 12 * 3600e3;   // verpasste Wochentermine nur bis zu 12 Stunden nachholen
@@ -84,14 +84,15 @@ async function runItem(item) {
     queue.save();
     try {
       // Instagram holt das Video über den Tunnel ab; dessen Adresse wird erst jetzt gelesen
-      const base = p === 'instagram' ? await tunnel.baseUrl(item.base) : item.base;
+      const base = p === 'instagram' && !item.test ? await tunnel.baseUrl(item.base) : item.base;
       const result = await PUBLISHERS[p]({
         videoUrl: `${base}/media/${item.file}`, filePath,
         title: item.title, description: item.description, tags: item.tags, caption,
         onStatus: s => { step.text = s; },
+        test: !!item.test,   // reiner Testlauf: nichts wird veröffentlicht, egal wie IG_MODE/YT_MODE/TT_MODE stehen
       });
       step.state = 'done';
-      step.text = 'Veröffentlicht ✓';
+      step.text = item.test ? 'Test erfolgreich ✓ (nichts veröffentlicht)' : 'Veröffentlicht ✓';
       step.result = result?.id;
       log.add({ itemId: item.id, hash: item.hash, title: item.title, platform: p, status: 'done', result: result?.id, test: !!result?.test });
     } catch (err) {
@@ -228,24 +229,29 @@ app.post('/api/videos', upload.single('video'), async (req, res) => {
   const platforms = cleanPlatforms(req.body.platforms);
   if (!platforms.length) return fail(400, 'Keine gültige Plattform gewählt.');
 
-  // Dasselbe Video nie zweimal hochladen: Vergleich über den Inhalt, nicht über den Dateinamen
-  const hash = await hashFile(req.file.path);
-  const inStock = queue.raw().find(i => i.hash === hash && i.status !== 'done');
-  if (inStock) return fail(409, `Dieses Video ist schon im Vorrat („${inStock.title || inStock.originalName}").`);
-  const posted = log.published(hash);
-  if (posted.length) {
-    const where = [...new Set(posted.map(e => NAMES[e.platform]))].join(', ');
-    const day = new Date(posted[0].time).toLocaleDateString('de-DE');
-    return fail(409, `Dieses Video wurde bereits am ${day} auf ${where} veröffentlicht und wird nicht erneut hochgeladen.`);
-  }
-
   const { errors, warnings } = videocheck.check(await videocheck.probe(req.file.path), platforms);
   if (errors.length) return fail(400, errors.join('\n'));
 
   const when = req.body.when || 'now';
+  const isTest = when === 'test';
+
+  // Dasselbe Video nie zweimal hochladen: Vergleich über den Inhalt, nicht über den Dateinamen.
+  // Ein reiner Testlauf darf dasselbe Video beliebig oft nutzen, er zählt für die Sperre nicht.
+  const hash = await hashFile(req.file.path);
+  if (!isTest) {
+    const inStock = queue.raw().find(i => i.hash === hash && i.status !== 'done' && !i.test);
+    if (inStock) return fail(409, `Dieses Video ist schon im Vorrat („${inStock.title || inStock.originalName}").`);
+    const posted = log.published(hash);
+    if (posted.length) {
+      const where = [...new Set(posted.map(e => NAMES[e.platform]))].join(', ');
+      const day = new Date(posted[0].time).toLocaleDateString('de-DE');
+      return fail(409, `Dieses Video wurde bereits am ${day} auf ${where} veröffentlicht und wird nicht erneut hochgeladen.`);
+    }
+  }
+
   let scheduledAt = null;
   let status = 'draft';
-  if (when === 'now') {
+  if (when === 'now' || isTest) {
     scheduledAt = new Date().toISOString();
     status = 'queued';
   } else if (when === 'schedule') {
@@ -265,6 +271,7 @@ app.post('/api/videos', upload.single('video'), async (req, res) => {
     tags: clean(req.body.tags),
     platforms,
     warnings,
+    test: isTest,
     steps: stepsFor(platforms),
     scheduledAt,
     status,
@@ -391,13 +398,18 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Serverfehler.' });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Läuft auf http://localhost:${PORT} (Instagram-Modus: ${process.env.IG_MODE === 'live' ? 'LIVE' : 'Test'})`);
-  media.start(UPLOAD_DIR, Number(process.env.MEDIA_PORT) || 3001);
-  tunnel.start(Number(process.env.MEDIA_PORT) || 3001);
-  igToken.start();
-  remoteState = remote.start(app);
-  if (remoteState && !process.env.NTFY_TOPIC) console.warn('Hinweis: Ohne NTFY_TOPIC bekommst du die Adresse für unterwegs nicht aufs Handy, sie steht dann nur im Protokoll (journalctl --user -u tourpost).');
-  setInterval(() => { autopilot(); tick(); }, TICK_MS);
-  kick();
-});
+// Nur beim direkten Start (node server/index.js) wird gelauscht und geplant, beim Import (Tests) nicht.
+if (require.main === module) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Läuft auf http://localhost:${PORT} (Instagram-Modus: ${process.env.IG_MODE === 'live' ? 'LIVE' : 'Test'})`);
+    media.start(UPLOAD_DIR, Number(process.env.MEDIA_PORT) || 3001);
+    tunnel.start(Number(process.env.MEDIA_PORT) || 3001);
+    igToken.start();
+    remoteState = remote.start(app);
+    if (remoteState && !process.env.NTFY_TOPIC) console.warn('Hinweis: Ohne NTFY_TOPIC bekommst du die Adresse für unterwegs nicht aufs Handy, sie steht dann nur im Protokoll (journalctl --user -u tourpost).');
+    setInterval(() => { autopilot(); tick(); }, TICK_MS);
+    kick();
+  });
+}
+
+module.exports = app;

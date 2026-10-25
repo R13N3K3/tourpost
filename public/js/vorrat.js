@@ -69,7 +69,7 @@ function card(it) {
     `<div class="${s.state === 'error' ? 'err' : ''}">${ICONS[s.state]} ${esc(s.name)}: ${esc(s.text)}</div>`).join('');
   const warns = (it.warnings || []).map(w => `<div class="warn">⚠ ${esc(w)}</div>`).join('');
   const editable = it.status !== 'running' && it.status !== 'done';
-  const when = it.status === 'done' ? `Veröffentlicht ${fmt(it.finishedAt)}`
+  const when = it.status === 'done' ? `${it.test ? 'Getestet (nichts veröffentlicht)' : 'Veröffentlicht'} ${fmt(it.finishedAt)}`
     : it.status === 'draft' ? (it.eta ? `Voraussichtlich ${fmt(it.eta)}` : 'Wartet auf den Wochenplan') : fmt(it.scheduledAt);
 
   return `
