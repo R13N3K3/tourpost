@@ -18,7 +18,8 @@ auth.save({ password: auth.hashPassword(PASSWORD), totpSecret: secret }, authFil
 
 let clock = Date.UTC(2026, 9, 25, 12, 0, 0);
 const alerts = [];
-const gate = createGate({ authFile, sessionFile: path.join(dir, 'sessions.json'), now: () => clock, alert: a => alerts.push(a) });
+const pairFile = path.join(dir, 'pair.json');
+const gate = createGate({ authFile, pairFile, sessionFile: path.join(dir, 'sessions.json'), now: () => clock, alert: a => alerts.push(a) });
 
 const inner = express();
 inner.get('/', (req, res) => res.send('geheime App'));
@@ -159,4 +160,43 @@ test('„Gerät merken": Sitzung hält Tage, aber nicht für immer', async () =>
   const c2 = cookieFrom(await login({ remember: true }));
   for (let i = 0; i < 91; i++) { clock += 864e5; await get('/api/queue', c2); }   // täglich benutzt, aber nach 90 Tagen trotzdem Schluss
   assert.equal((await get('/api/queue', c2)).status, 401);
+});
+
+test('Kopplung per QR-Code: einmal, nur kurz gültig, ohne Passwort am Handy', async () => {
+  // die Kopplungsseite lädt ohne Anmeldung, die App dahinter nicht
+  assert.equal((await get('/pair/' + 'a'.repeat(64))).status, 200);
+  assert.equal((await get('/remote-pair.js')).status, 200);
+  assert.equal((await get('/api/queue')).status, 401);
+
+  clock += 31 * 60_000;
+  const { token } = auth.createPairing(pairFile, clock);
+  const r = await post('/api/remote/pair', { token });
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('set-cookie'), /Max-Age=7776000/);   // 90 Tage
+  assert.match(r.headers.get('set-cookie'), /HttpOnly/i);
+  const cookie = cookieFrom(r);
+  assert.deepEqual(await (await get('/api/queue', cookie)).json(), ['geheim']);
+  assert.ok(alerts.some(a => /gekoppelt/.test(a.title)));
+  assert.equal((await post('/api/remote/pair', { token })).status, 401);   // zweites Mal geht nicht
+});
+
+test('Kopplung: abgelaufen, falsch und von fremden Seiten wird abgelehnt', async () => {
+  clock += 31 * 60_000;
+  const alt = auth.createPairing(pairFile, clock);
+  clock += 11 * 60_000;                                                   // älter als 10 Minuten
+  assert.equal((await post('/api/remote/pair', { token: alt.token })).status, 401);
+  const neu = auth.createPairing(pairFile, clock);
+  assert.equal((await post('/api/remote/pair', { token: neu.token }, { Origin: 'https://boese.example' })).status, 403);
+  assert.equal((await post('/api/remote/pair', { token: 'kein-token' })).status, 401);
+  assert.equal((await post('/api/remote/pair', { token: '0'.repeat(64) })).status, 401);
+  assert.equal((await post('/api/remote/pair', {})).status, 401);
+  assert.equal((await post('/api/remote/pair', { token: neu.token })).status, 200);   // der richtige gilt weiterhin
+});
+
+test('Kopplung: Raten wird nach fünf Fehlversuchen gesperrt', async () => {
+  clock += 31 * 60_000;
+  const { token } = auth.createPairing(pairFile, clock);
+  const ip = { 'cf-connecting-ip': '203.0.113.50' };
+  for (let i = 0; i < 5; i++) assert.equal((await post('/api/remote/pair', { token: 'f'.repeat(64) }, ip)).status, 401);
+  assert.equal((await post('/api/remote/pair', { token }, ip)).status, 429);   // auch der richtige Link geht dann nicht
 });

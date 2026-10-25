@@ -1,6 +1,7 @@
 // Richtet den Fernzugriff ein: Passwort festlegen und den Schlüssel für die Authenticator-App erzeugen.
 // Aufruf: npm run remote-setup     (erneut ausgeführt ersetzt es Passwort und Schlüssel und beendet alle Sitzungen)
 // Passwort und Schlüssel bleiben auf diesem Rechner (data/remote-auth.json), sie dürfen nie in den Chat.
+const crypto = require('crypto');
 const readline = require('readline');
 const QRCode = require('qrcode');
 const fs = require('fs');
@@ -24,9 +25,17 @@ function ask(question, { hidden = false } = {}) {
   console.log('Fernzugriff einrichten\n');
   if (auth.load()) console.log('Es gibt schon Zugangsdaten. Sie werden ersetzt, alle angemeldeten Geräte werden abgemeldet.\n');
 
-  const pw = await ask(`Neues Passwort (mindestens ${auth.MIN_PASSWORD} Zeichen): `, { hidden: true });
-  if (pw.length < auth.MIN_PASSWORD) { console.error(`Zu kurz, bitte mindestens ${auth.MIN_PASSWORD} Zeichen.`); process.exit(1); }
-  if (pw !== await ask('Passwort wiederholen: ', { hidden: true })) { console.error('Die Eingaben stimmen nicht überein.'); process.exit(1); }
+  // Das Passwort wird nur einmal gebraucht: Handys koppelst du später per QR-Code (npm run remote-pair).
+  // Einfach Enter drücken, dann erzeugt das Skript ein starkes zufälliges Passwort und zeigt es einmal an.
+  let pw = await ask(`Passwort (mindestens ${auth.MIN_PASSWORD} Zeichen) oder Enter für ein zufälliges: `, { hidden: true });
+  if (pw === '') {
+    const letters = 'abcdefghjkmnpqrstuvwxyz23456789';   // ohne verwechselbare Zeichen
+    pw = Array.from({ length: 4 }, () => Array.from(crypto.randomBytes(4), b => letters[b % letters.length]).join('')).join('-');
+    console.log(`\nDein Passwort:  ${pw}\nJetzt in den Passwortmanager legen oder notieren. Es wird nicht noch einmal angezeigt.`);
+  } else if (pw.length < auth.MIN_PASSWORD) {
+    console.error(`Zu kurz, bitte mindestens ${auth.MIN_PASSWORD} Zeichen.`);
+    process.exit(1);
+  }
 
   const secret = totp.newSecret();
   const url = totp.otpauthUrl(secret, 'Fernzugriff');
@@ -44,6 +53,7 @@ function ask(question, { hidden = false } = {}) {
         setEnvVar('REMOTE_MODE', 'tunnel');
         console.log('✓ REMOTE_MODE=tunnel gesetzt. Server neu starten: systemctl --user restart tourpost');
         console.log('  Die Adresse für unterwegs kommt per ntfy aufs Handy (NTFY_TOPIC) und steht im Protokoll.');
+        console.log('  Handy koppeln ohne Tippen: nach dem Neustart  npm run remote-pair  und den QR-Code scannen.');
       } else {
         console.log('Aktivieren später mit REMOTE_MODE=tunnel in der .env, ausschalten mit REMOTE_MODE=off.');
       }

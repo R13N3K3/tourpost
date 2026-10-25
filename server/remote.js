@@ -2,7 +2,7 @@
 // aber nur hinter Login mit Passwort UND Einmalcode (TOTP). Die Fern-Tür ist ein eigener lokaler Anschluss
 // (REMOTE_PORT, Standard 3002), nur auf den zeigt der Fern-Tunnel. Port 3000 (Heimnetz) und der Medienserver
 // sind davon getrennt. Alles, was über diese Tür kommt, geht durch die Anmeldung, ohne Ausnahmen außer der
-// Anmeldeseite selbst (eigene Dateien, keine Dateien der App).
+// Anmeldeseite und der Kopplungsseite (eigene Dateien, keine Dateien der App).
 const crypto = require('crypto');
 const express = require('express');
 const fs = require('fs');
@@ -26,7 +26,7 @@ const LOGIN_DIR = path.join(__dirname, 'remote');
 const sha = s => crypto.createHash('sha256').update(s).digest('hex');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-function createGate({ authFile = auth.DEFAULT_FILE, sessionFile, now = () => Date.now(), alert = notify } = {}) {
+function createGate({ authFile = auth.DEFAULT_FILE, pairFile = auth.PAIR_FILE, sessionFile, now = () => Date.now(), alert = notify } = {}) {
   const sessions = new Map();            // sha256(Token) -> { created, last }
   const fails = new Map();               // IP -> { count, until }
   let globalFails = [];                  // Zeitpunkte
@@ -151,6 +151,30 @@ function createGate({ authFile = auth.DEFAULT_FILE, sessionFile, now = () => Dat
     res.json({ ok: true });
   });
 
+  // Kopplung per QR-Code: die Seite lädt ohne Anmeldung, das Einlösen geschieht per POST (so verbrauchen Link-Vorschauen den Code nicht)
+  router.get('/pair/:token', (req, res) => res.sendFile(path.join(LOGIN_DIR, 'pair.html')));
+  router.get('/remote-pair.js', (req, res) => res.sendFile(path.join(LOGIN_DIR, 'pair.js')));
+
+  router.post('/api/remote/pair', sameOrigin, express.json({ limit: '2kb' }), async (req, res) => {
+    const ip = ipOf(req);
+    if (locked(ip)) {
+      await sleep(FAIL_DELAY_MS);
+      return res.status(429).json({ error: 'Zu viele Versuche. Bitte später erneut versuchen.' });
+    }
+    if (!auth.consumePairing(req.body?.token, pairFile, now())) {
+      recordFail(ip);
+      await sleep(FAIL_DELAY_MS);
+      return res.status(401).json({ error: 'Der Link ist abgelaufen oder wurde schon benutzt.' });
+    }
+    fails.delete(ip);
+    const token = crypto.randomBytes(32).toString('hex');
+    sessions.set(sha(token), { created: now(), last: now(), remember: true });
+    persist();
+    res.cookie(COOKIE, token, { httpOnly: true, secure: true, sameSite: 'strict', path: '/', maxAge: REMEMBER_MAX_MS });
+    alert({ title: 'TourPost: Neues Gerät gekoppelt', message: `Per QR-Code angemeldet, Adresse ${ip} (Gerät wird 90 Tage gemerkt).`, priority: 3, tags: ['iphone'] });
+    res.json({ ok: true });
+  });
+
   router.post('/api/remote/logout', sameOrigin, (req, res) => {
     const s = sessionOf(req);
     if (s) { sessions.delete(s.key); persist(); }
@@ -187,6 +211,9 @@ function start(app) {
     return null;
   }
   const gate = createGate({ sessionFile: path.join(__dirname, '..', 'data', 'remote-sessions.json') });
+  // aktuelle Adresse für "npm run remote-pair" (liest sie, um den QR-Code zu bauen). Beim Start zuerst die alte löschen.
+  const urlFile = path.join(__dirname, '..', 'data', 'remote-url.json');
+  try { fs.unlinkSync(urlFile); } catch {}
   const outer = express();
   outer.disable('x-powered-by');
   outer.use(gate.router);
@@ -203,7 +230,7 @@ function start(app) {
     enabled: () => true,
     probePath: '/login',
     probeStatus: 200,
-    onUrl: url => notify({ title: 'TourPost: Adresse für unterwegs', message: `${url}/login\nAnmeldung mit Passwort und Code aus der Authenticator-App.`, priority: 3, tags: ['globe_with_meridians'] }),
+    onUrl: url => { fs.mkdirSync(path.dirname(urlFile), { recursive: true }); fs.writeFileSync(urlFile, JSON.stringify({ url, time: new Date().toISOString() })); return notify({ title: 'TourPost: Adresse für unterwegs', message: `${url}/login\nAnmeldung mit Passwort und Code aus der Authenticator-App.`, priority: 3, tags: ['globe_with_meridians'] }); },
   });
   tunnel.start(port);
   return { server, tunnel, gate };

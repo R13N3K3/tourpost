@@ -21,7 +21,8 @@ Ohne Optionen passiert Folgendes:
 Optionen:
   --firewall     Port in ufw für das Heimnetz freigeben (braucht sudo)
   --tunnel       cloudflared installieren (öffentliche Adresse für Instagram)
-  --remote       Fernzugriff direkt einrichten: Passwort und Authenticator-Code anlegen (installiert auch cloudflared)
+  --remote       Fernzugriff direkt einrichten: Passwort und Authenticator-Code anlegen, danach Handy per QR-Code koppeln
+                 (installiert auch cloudflared)
   --no-remote    Rückfrage zum Fernzugriff überspringen
   --no-service   keinen Dienst einrichten, der Server wird dann von Hand mit "npm start" gestartet
   --service      Dienst einrichten (ist schon der Standard, die Option bleibt aus Gewohnheit erhalten)
@@ -254,6 +255,11 @@ if [ "$WANT_REMOTE" = 1 ]; then
   node scripts/remote-setup.js
   if [ "$WANT_SERVICE" = 1 ] && command -v systemctl >/dev/null; then
     systemctl --user restart tourpost.service && ok "Dienst neu gestartet, die Adresse für unterwegs kommt per ntfy aufs Handy (NTFY_TOPIC) und steht im Protokoll"
+    if [ -t 0 ] && grep -qE '^REMOTE_MODE=tunnel' .env && ask_yn "Jetzt ein Handy per QR-Code koppeln (kein Passwort am Handy nötig)?"; then
+      echo "    Warte, bis der Tunnel steht …"
+      for _ in $(seq 1 40); do [ -f data/remote-url.json ] && break; sleep 1; done
+      node scripts/remote-pair.js || warn "Später nachholen mit:  npm run remote-pair"
+    fi
   fi
 fi
 
