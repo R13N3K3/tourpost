@@ -1,37 +1,33 @@
 // Fernzugriff (zweiter Modus, REMOTE_MODE=tunnel): Die App ist zusätzlich über eine Cloudflare-Adresse erreichbar,
-// aber nur hinter Login mit Passwort UND Einmalcode (TOTP). Die Fern-Tür ist ein eigener lokaler Anschluss
-// (REMOTE_PORT, Standard 3002), nur auf den zeigt der Fern-Tunnel. Port 3000 (Heimnetz) und der Medienserver
-// sind davon getrennt. Alles, was über diese Tür kommt, geht durch die Anmeldung, ohne Ausnahmen außer der
-// Anmeldeseite und der Kopplungsseite (eigene Dateien, keine Dateien der App).
+// aber nur für Geräte, die am PC per QR-Code gekoppelt wurden (npm run remote-pair). Es gibt keine Anmeldeseite und kein
+// Passwort. Die Fern-Tür ist ein eigener lokaler Anschluss (REMOTE_PORT, Standard 3002), nur auf den zeigt der
+// Fern-Tunnel. Port 3000 (Heimnetz) und der Medienserver sind davon getrennt. Alles, was über diese Tür kommt, braucht
+// eine gültige Sitzung, ohne Ausnahmen außer der Kopplungsseite und den Hinweisdateien (eigene Dateien, keine der App).
 const crypto = require('crypto');
 const express = require('express');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
-const totp = require('./totp');
 const auth = require('./remoteauth');
 const { notify } = require('./notify');
 
 const COOKIE = 'tp_session';
-const SESSION_MAX_MS = 12 * 3600e3;     // absolut
-const SESSION_IDLE_MS = 2 * 3600e3;     // ohne Aktivität
-const REMEMBER_MAX_MS = 90 * 24 * 3600e3;   // „Dieses Gerät merken": absolut
-const REMEMBER_IDLE_MS = 30 * 24 * 3600e3;  // ohne Aktivität
-const MAX_UPLOAD_MB = 100;              // Cloudflare lässt im kostenlosen Tarif etwa 100 MB pro Anfrage zu
-const IP_FAILS = 5;                     // Fehlversuche pro Adresse, danach Sperre
-const GLOBAL_FAILS = 20;                // Fehlversuche insgesamt pro Stunde, danach Sperre für alle
+const SESSION_MAX_MS = 90 * 24 * 3600e3;   // absolut
+const SESSION_IDLE_MS = 30 * 24 * 3600e3;  // ohne Aktivität
+const MAX_UPLOAD_MB = 100;                 // Cloudflare lässt im kostenlosen Tarif etwa 100 MB pro Anfrage zu
+const IP_FAILS = 5;                        // Fehlversuche pro Adresse, danach Sperre
+const GLOBAL_FAILS = 20;                   // Fehlversuche insgesamt pro Stunde, danach Sperre für alle
 const LOCK_MS = 15 * 60e3;
-const FAIL_DELAY_MS = 600;              // jede Fehlermeldung kommt gleich spät
-const LOGIN_DIR = path.join(__dirname, 'remote');
+const FAIL_DELAY_MS = 600;                 // jede Fehlermeldung kommt gleich spät
+const PAGES_DIR = path.join(__dirname, 'remote');
 const sha = s => crypto.createHash('sha256').update(s).digest('hex');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-function createGate({ authFile = auth.DEFAULT_FILE, pairFile = auth.PAIR_FILE, sessionFile, now = () => Date.now(), alert = notify } = {}) {
+function createGate({ pairFile = auth.PAIR_FILE, sessionFile, now = () => Date.now(), alert = notify } = {}) {
   const sessions = new Map();            // sha256(Token) -> { created, last }
   const fails = new Map();               // IP -> { count, until }
   let globalFails = [];                  // Zeitpunkte
   let globalUntil = 0;
-  let lastStep = -1;                     // jeder Einmalcode gilt nur einmal
   let lastAlert = 0;
 
   if (sessionFile) {
@@ -54,9 +50,7 @@ function createGate({ authFile = auth.DEFAULT_FILE, pairFile = auth.PAIR_FILE, s
     const s = sessions.get(key);
     if (!s) return null;
     const t = now();
-    const maxMs = s.remember ? REMEMBER_MAX_MS : SESSION_MAX_MS;
-    const idleMs = s.remember ? REMEMBER_IDLE_MS : SESSION_IDLE_MS;
-    if (t - s.created > maxMs || t - s.last > idleMs) { sessions.delete(key); persist(); return null; }
+    if (t - s.created > SESSION_MAX_MS || t - s.last > SESSION_IDLE_MS) { sessions.delete(key); persist(); return null; }
     if (t - s.last > 60_000) { s.last = t; persist(); }
     return { key, ...s };
   }
@@ -76,7 +70,7 @@ function createGate({ authFile = auth.DEFAULT_FILE, pairFile = auth.PAIR_FILE, s
     if (globalFails.length >= GLOBAL_FAILS) globalUntil = t + LOCK_MS;
     if (t - lastAlert > 10 * 60e3) {   // höchstens eine Meldung pro 10 Minuten
       lastAlert = t;
-      alert({ title: 'TourPost: Fehlgeschlagene Anmeldung', message: `Fernzugriff, Adresse ${ip}. Fehlversuche: ${fails.get(ip).count}.`, priority: 4, tags: ['warning'] });
+      alert({ title: 'TourPost: Fehlgeschlagene Kopplung', message: `Fernzugriff, Adresse ${ip}. Fehlversuche: ${fails.get(ip).count}.`, priority: 4, tags: ['warning'] });
     }
   }
 
@@ -105,57 +99,23 @@ function createGate({ authFile = auth.DEFAULT_FILE, pairFile = auth.PAIR_FILE, s
     next();
   }
 
+  // Ohne gültige Sitzung kommt nichts durch. Browser sehen eine Hinweisseite, die Schnittstelle bekommt 401.
   function guard(req, res, next) {
     const s = sessionOf(req);
     if (s) { req.session = s; return next(); }
-    if (req.method === 'GET' && req.accepts(['html', 'json']) === 'html' && !req.path.startsWith('/api/')) return res.redirect('/login');
-    res.status(401).json({ error: 'Bitte anmelden.' });
+    if (req.method === 'GET' && req.accepts(['html', 'json']) === 'html' && !req.path.startsWith('/api/')) {
+      return res.status(401).sendFile(path.join(PAGES_DIR, 'locked.html'));
+    }
+    res.status(401).json({ error: 'Dieses Gerät ist nicht gekoppelt.' });
   }
 
   const router = express.Router();
   router.use(setHeaders);
 
-  // Anmeldeseite und ihre zwei Dateien (liegen in server/remote/, nicht in public/)
-  // Wer schon angemeldet ist, kommt direkt in die App. Das Cookie ist SameSite=Lax, damit auch Links von außen (ntfy, QR-Scanner,
-  // andere Apps) angemeldet ankommen. Schreibzugriffe schützt weiter die Origin-Prüfung, und alle GET-Routen der App sind lesend.
-  router.get('/login', (req, res) => sessionOf(req) ? res.redirect('/') : res.sendFile(path.join(LOGIN_DIR, 'login.html')));
-  router.get('/remote-login.js', (req, res) => res.sendFile(path.join(LOGIN_DIR, 'login.js')));
-  router.get('/remote-login.css', (req, res) => res.sendFile(path.join(LOGIN_DIR, 'login.css')));
-
-  router.post('/api/remote/login', sameOrigin, express.json({ limit: '2kb' }), async (req, res) => {
-    const ip = ipOf(req);
-    if (locked(ip)) {
-      await sleep(FAIL_DELAY_MS);
-      return res.status(429).json({ error: 'Zu viele Versuche. Bitte später erneut versuchen.' });
-    }
-    const cred = auth.load(authFile);
-    const { password, code, remember } = req.body || {};
-    let ok = false;
-    if (cred && typeof password === 'string' && password.length <= 200) {
-      // beide Prüfungen immer ausführen, damit nicht erkennbar ist, welche gescheitert ist
-      const passOk = auth.checkPassword(password, cred.password);
-      const step = totp.verify(cred.totpSecret, code, { now: now(), after: lastStep });
-      ok = passOk && step !== null;
-      if (ok) lastStep = step;
-    }
-    if (!ok) {
-      recordFail(ip);
-      await sleep(FAIL_DELAY_MS);
-      return res.status(401).json({ error: 'Passwort oder Code falsch.' });
-    }
-    fails.delete(ip);
-    const token = crypto.randomBytes(32).toString('hex');
-    const merken = remember === true;
-    sessions.set(sha(token), { created: now(), last: now(), remember: merken });
-    persist();
-    res.cookie(COOKIE, token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: merken ? REMEMBER_MAX_MS : SESSION_MAX_MS });
-    alert({ title: 'TourPost: Anmeldung von außen', message: `Erfolgreich angemeldet, Adresse ${ip}${merken ? ' (Gerät wird 90 Tage gemerkt)' : ''}.`, priority: 3, tags: ['key'] });
-    res.json({ ok: true });
-  });
-
   // Kopplung per QR-Code: die Seite lädt ohne Anmeldung, das Einlösen geschieht per POST (so verbrauchen Link-Vorschauen den Code nicht)
-  router.get('/pair/:token', (req, res) => res.sendFile(path.join(LOGIN_DIR, 'pair.html')));
-  router.get('/remote-pair.js', (req, res) => res.sendFile(path.join(LOGIN_DIR, 'pair.js')));
+  router.get('/pair/:token', (req, res) => res.sendFile(path.join(PAGES_DIR, 'pair.html')));
+  router.get('/remote-pair.js', (req, res) => res.sendFile(path.join(PAGES_DIR, 'pair.js')));
+  router.get('/remote.css', (req, res) => res.sendFile(path.join(PAGES_DIR, 'remote.css')));
 
   router.post('/api/remote/pair', sameOrigin, express.json({ limit: '2kb' }), async (req, res) => {
     const ip = ipOf(req);
@@ -170,10 +130,12 @@ function createGate({ authFile = auth.DEFAULT_FILE, pairFile = auth.PAIR_FILE, s
     }
     fails.delete(ip);
     const token = crypto.randomBytes(32).toString('hex');
-    sessions.set(sha(token), { created: now(), last: now(), remember: true });
+    sessions.set(sha(token), { created: now(), last: now() });
     persist();
-    res.cookie(COOKIE, token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: REMEMBER_MAX_MS });
-    alert({ title: 'TourPost: Neues Gerät gekoppelt', message: `Per QR-Code angemeldet, Adresse ${ip} (Gerät wird 90 Tage gemerkt).`, priority: 3, tags: ['iphone'] });
+    // SameSite=Lax, damit auch Links von außen (ntfy, andere Apps) angemeldet ankommen. Schreibzugriffe schützt die Origin-Prüfung,
+    // und alle GET-Routen der App sind lesend.
+    res.cookie(COOKIE, token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: SESSION_MAX_MS });
+    alert({ title: 'TourPost: Neues Gerät gekoppelt', message: `Per QR-Code gekoppelt, Adresse ${ip} (angemeldet bis zu 90 Tage).`, priority: 3, tags: ['iphone'] });
     res.json({ ok: true });
   });
 
@@ -207,32 +169,31 @@ function createGate({ authFile = auth.DEFAULT_FILE, pairFile = auth.PAIR_FILE, s
 
 function start(app) {
   if (process.env.REMOTE_MODE !== 'tunnel') return null;
-  const cred = auth.load();
-  if (!cred) {
-    console.warn('Fernzugriff ist an (REMOTE_MODE=tunnel), aber nicht eingerichtet. Bitte "npm run remote-setup" ausführen. Es wird nichts geöffnet.');
-    return null;
-  }
   const gate = createGate({ sessionFile: path.join(__dirname, '..', 'data', 'remote-sessions.json') });
-  // aktuelle Adresse für "npm run remote-pair" (liest sie, um den QR-Code zu bauen). Beim Start zuerst die alte löschen.
+  // aktuelle Adresse für "npm run remote-pair" (baut daraus den QR-Code). Beim Start zuerst die alte löschen.
   const urlFile = path.join(__dirname, '..', 'data', 'remote-url.json');
   try { fs.unlinkSync(urlFile); } catch {}
   const outer = express();
   outer.disable('x-powered-by');
   outer.use(gate.router);
-  outer.use(app);                         // erst nach erfolgreicher Anmeldung erreicht eine Anfrage die App
+  outer.use(app);                         // erst nach erfolgreicher Kopplung erreicht eine Anfrage die App
 
   const port = Number(process.env.REMOTE_PORT) || 3002;
   const server = http.createServer(outer);
   server.requestTimeout = 10 * 60e3;      // Uploads über Mobilfunk dürfen länger dauern
-  server.listen(port, '127.0.0.1', () => console.log(`Fern-Tür (nur mit Login) auf http://127.0.0.1:${port}`));
+  server.listen(port, '127.0.0.1', () => console.log(`Fern-Tür (nur für gekoppelte Geräte) auf http://127.0.0.1:${port}`));
 
   const { create } = require('./tunnel');
   const tunnel = create({
     name: 'Fern-Tunnel',
     enabled: () => true,
-    probePath: '/login',
+    probePath: '/remote.css',
     probeStatus: 200,
-    onUrl: url => { fs.mkdirSync(path.dirname(urlFile), { recursive: true }); fs.writeFileSync(urlFile, JSON.stringify({ url, time: new Date().toISOString() })); return notify({ title: 'TourPost: Adresse für unterwegs', message: `${url}/login\nAnmeldung mit Passwort und Code aus der Authenticator-App.`, priority: 3, tags: ['globe_with_meridians'] }); },
+    onUrl: url => {
+      fs.mkdirSync(path.dirname(urlFile), { recursive: true });
+      fs.writeFileSync(urlFile, JSON.stringify({ url, time: new Date().toISOString() }));
+      return notify({ title: 'TourPost: Adresse für unterwegs', message: `${url}\nNeues Gerät koppeln: am PC "npm run remote-pair" und den QR-Code scannen.`, priority: 3, tags: ['globe_with_meridians'] });
+    },
   });
   tunnel.start(port);
   return { server, tunnel, gate };

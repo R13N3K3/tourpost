@@ -72,7 +72,7 @@ async function renderLogout() {
   btn.textContent = 'Abmelden';
   btn.addEventListener('click', async () => {
     await fetch('/api/remote/logout', { method: 'POST' });
-    location.replace('/login');
+    location.replace('/');
   });
   bar.appendChild(btn);
 }

@@ -13,12 +13,7 @@ async function koppeln() {
     });
     if (res.ok) { text.textContent = 'Angemeldet ✓'; location.replace('/'); return; }
     const data = await res.json().catch(() => ({}));
-    text.textContent = (data.error || 'Das hat nicht geklappt.') + ' Erzeuge am PC einen neuen QR-Code mit „npm run remote-pair“ oder melde dich mit Passwort und Code an.';
-    const link = document.createElement('a');
-    link.href = '/login';
-    link.textContent = 'Zur Anmeldung';
-    text.appendChild(document.createElement('br'));
-    text.appendChild(link);
+    text.textContent = (data.error || 'Das hat nicht geklappt.') + ' Erzeuge am PC einen neuen QR-Code mit „npm run remote-pair“.';
   } catch {
     text.textContent = 'Keine Verbindung.';
     neu.hidden = false;

@@ -37,7 +37,7 @@ Alle Zugangsdaten stehen in der Datei **`.env`** im Projektordner (`./setup.sh` 
 | `IG_ACCESS_TOKEN` | Instagram-Token aus der Meta-Developer-App (ca. 60 Tage gültig) |
 | `PUBLIC_BASE_URL` | Optional: feste HTTPS-Adresse des **Medienservers** (eigener Cloudflare-Tunnel). Leer lassen, dann startet der Server im Live-Modus selbst einen Schnelltunnel (`server/tunnel.js`). Instagram lädt das Video von dort ab |
 | `MEDIA_PORT` | Port des Medienservers, Standard 3001 |
-| `REMOTE_MODE` | `off` = nur Heimnetz (Standard), `tunnel` = zusätzlich Fernzugriff mit Login (siehe „Fernzugriff von unterwegs") |
+| `REMOTE_MODE` | `off` = nur Heimnetz (Standard), `tunnel` = zusätzlich Fernzugriff für per QR-Code gekoppelte Geräte (siehe „Fernzugriff von unterwegs") |
 | `REMOTE_PORT` | Port der Fern-Tür, Standard 3002 (nur lokal, nur auf diesen zeigt der Fern-Tunnel) |
 | `YT_MODE` | `test` oder `live` für YouTube |
 | `YT_CLIENT_ID`, `YT_CLIENT_SECRET` | OAuth-Client aus der Google Cloud Console |
@@ -111,7 +111,7 @@ Läuft über die **Content Posting API** (Direct Post, die Datei wird direkt vom
 - **Vorrat:** Hochgeladene Videos warten auf dem Server. Die Reihenfolge ist „ältestes zuerst". Die App zeigt zu jedem Video den voraussichtlichen Termin und wie lange der Vorrat reicht.
 - **Wochenplan:** Pro Wochentag eine Uhrzeit (Standard: Freitag und Sonntag um 12:00, änderbar). Alle 10 Sekunden prüft der Server, ob ein Termin da ist, und veröffentlicht dann **ein** Video. Zeiten gelten in der Zeitzone des Servers. Verpasste Termine (Server war aus) holt er bis zu 12 Stunden später nach, ältere nicht.
 - **Weitere Optionen beim Hochladen:** „Zu einem festen Zeitpunkt" für ein einzelnes Video, „Sofort veröffentlichen" und **„Nur Test (nichts wird veröffentlicht)"**. Der Testlauf lädt das Video hoch, prüft es (Videoprüfung) und simuliert die Plattformen, **auch wenn `IG_MODE`/`YT_MODE`/`TT_MODE` auf `live` stehen**. Es wird nichts gepostet, das Video wird danach gelöscht und zählt nicht für die Sperre gegen doppeltes Posten, du kannst dasselbe Video also später echt posten. Praktisch, um nach einer Änderung (zum Beispiel Fernzugriff oder Tunnel) den ganzen Weg zu prüfen.
-- **Zwei Modi:** Im **Heimnetz** (Standard) ist die App über das WLAN erreichbar, ohne Login. Mit dem **Fernzugriff** kommst du zusätzlich von unterwegs hinein, nur mit Passwort und Authenticator-Code und mit „Dieses Gerät 90 Tage merken". Einrichtung und Absicherung stehen unter „Fernzugriff von unterwegs".
+- **Zwei Modi:** Im **Heimnetz** (Standard) ist die App über das WLAN erreichbar, ohne Login. Mit dem **Fernzugriff** kommst du zusätzlich von unterwegs hinein, nur auf einem Handy, das du am PC per QR-Code gekoppelt hast (ohne Passwort, 90 Tage angemeldet). Einrichtung und Absicherung stehen unter „Fernzugriff von unterwegs".
 - **Videoprüfung:** Beim Hochladen prüft der Server das Video mit `ffprobe` (muss installiert sein, sonst entfällt die Prüfung). Abgelehnt wird eine Datei, die kein lesbares Video ist, und für Instagram ein Video unter 3 Sekunden. Als gelbe **Warnung** (der Upload klappt trotzdem) erscheinen Querformat, YouTube-Videos über 3 Minuten, Instagram-Videos über 15 Minuten und ein anderer Codec als H.264. Die Warnungen stehen auf der Video-Seite und im Vorrat am Video.
 - **Veröffentlichen:** Instagram holt das Video über eine öffentliche URL ab und zeigt es als Reel (Instagram API). YouTube und TikTok bekommen die Datei direkt vom Server. Danach wird die Videodatei gelöscht.
 
@@ -119,25 +119,26 @@ Läuft über die **Content Posting API** (Direct Post, die Datei wird direkt vom
 
 Standard ist der **Heimnetz-Modus**: Die App ist nur im WLAN erreichbar, ohne Login. Zusätzlich lässt sich ein **Fernzugriff** einschalten, damit du auch unterwegs Videos hochladen kannst, ohne dass der Router etwas freigeben muss (der Tunnel baut die Verbindung von deinem PC nach außen auf).
 
-Einrichten (einmal, am PC): `./setup.sh` fragt im Terminal, ob der Fernzugriff eingerichtet werden soll. Später ein- oder ausschalten geht mit demselben Skript (es fragt dann, ob der Fernzugriff aus- oder wieder eingeschaltet werden soll), ohne Rückfrage mit `./setup.sh --no-remote`. Direkt einrichten:
-```bash
-npm run remote-setup     # oder: ./setup.sh --remote
-```
-Das Skript fragt **einmal** ein **Passwort** (mindestens 12 Zeichen, oder einfach Enter: dann erzeugt es ein starkes zufälliges und zeigt es einmal an) und zeigt einen **QR-Code** für eine Authenticator-App (Aegis, Google Authenticator, 2FAS …). Zur Kontrolle gibst du einen Code aus der App ein, dann wird `REMOTE_MODE=tunnel` gesetzt. Server neu starten (`systemctl --user restart tourpost`). Die **Adresse für unterwegs** kommt per ntfy aufs Handy (dafür `NTFY_TOPIC` setzen) und steht im Protokoll (`journalctl --user -u tourpost`). Sie ändert sich bei jedem Start des Tunnels. Ausschalten: `REMOTE_MODE=off` und Server neu starten.
+Es gibt **keine Anmeldeseite und kein Passwort**. Ein Handy kommt nur über einen **QR-Code** hinein, den du am PC erzeugst:
 
-**Handy koppeln ohne Tippen (QR-Code):** Am PC `npm run remote-pair` ausführen und den QR-Code mit der Handy-Kamera scannen. Das Handy ist dann 90 Tage angemeldet, Passwort und Code müssen am Handy nicht getippt werden. Der Link im QR-Code gilt **10 Minuten und genau einmal** und wird nur am PC erzeugt (er steht nur in einer lokalen Datei, `data/remote-pairing.json`, als Hash). Die Anmeldung mit Passwort und Code bleibt als Ausweichweg erhalten. `./setup.sh --remote` bietet das Koppeln gleich am Ende an.
+```bash
+./setup.sh               # fragt, ob der Fernzugriff eingeschaltet werden soll (oder gezielt: ./setup.sh --remote)
+npm run remote-pair      # zeigt den QR-Code, mit der Handy-Kamera scannen
+```
+
+Danach ist das Handy bis zu **90 Tage** angemeldet (30 Tage ohne Nutzung), und du öffnest die öffentliche Adresse einfach wie eine normale Seite (am besten als Lesezeichen oder Homescreen-Symbol). Die **Adresse** kommt per ntfy aufs Handy (dafür `NTFY_TOPIC` setzen) und steht im Protokoll (`journalctl --user -u tourpost`). Sie ändert sich bei jedem Start des Tunnels, nach einem Neustart des Servers muss das Handy deshalb neu gekoppelt werden. Ein weiteres Handy koppelst du genauso. Ausschalten: `REMOTE_MODE=off` und Server neu starten. Handy verloren? `npm run remote-revoke` und Server neu starten meldet alle Geräte ab.
 
 So ist es abgesichert:
-- **Eigene Fern-Tür:** Der Tunnel zeigt nur auf einen eigenen Anschluss (`REMOTE_PORT`, 3002), und dort geht **jede** Anfrage durch die Anmeldung. Der Heimnetz-Port 3000 und der Medienserver sind nie über diese Adresse erreichbar.
-- **Passwort und Einmalcode:** Beides ist nötig. Das Passwort liegt nur als scrypt-Hash in `data/remote-auth.json` (Rechte 600), jeder Code gilt nur einmal. Beides legst du lokal an, nichts davon läuft über den Chat.
-- **Kopplung:** Der Link aus dem QR-Code ist ein 256-Bit-Zufallswert, 10 Minuten und nur einmal gültig, das Einlösen zählt bei Fehlversuchen für die Sperre mit, und es kommt eine Meldung aufs Handy (ntfy), wenn ein neues Gerät gekoppelt wird. Das Öffnen des Links verbraucht ihn nicht (Link-Vorschauen schaden nicht), erst der Klick der Seite.
-- **Sperren:** Nach 5 Fehlversuchen von einer Adresse 15 Minuten gesperrt, nach 20 Fehlversuchen insgesamt pro Stunde für alle. Fehler dauern immer gleich lang, die Meldung verrät nicht, ob Passwort oder Code falsch war.
-- **Sitzung:** zufälliges Cookie (`HttpOnly`, `Secure`, `SameSite=Lax`, damit auch Links von außen wie aus einer ntfy-Meldung angemeldet ankommen; Schreibzugriffe schützt die Origin-Prüfung), serverseitig gespeichert, nach 2 Stunden Leerlauf oder spätestens 12 Stunden ungültig. Mit dem Häkchen **„Dieses Gerät 90 Tage merken"** bleibt ein Gerät bis zu 90 Tage angemeldet (30 Tage ohne Nutzung), dann ist Passwort plus Code nur einmal nötig. Oben in der App steht „Abmelden". Handy verloren? `npm run remote-revoke` und Server neu starten meldet alle Geräte ab.
-- **Weitere Schutzmaßnahmen:** Anfragen von fremden Seiten werden abgelehnt (Prüfung von Origin), Sicherheits-Header (CSP, HSTS, kein Einbetten), keine Zwischenspeicherung.
-- **Meldungen aufs Handy:** bei jeder Anmeldung von außen und bei Fehlversuchen (höchstens alle 10 Minuten).
+- **Der Zugang entsteht nur am PC.** Der Link im QR-Code ist ein 256-Bit-Zufallswert, gilt **10 Minuten und genau einmal** und wird nur lokal erzeugt (als Hash in `data/remote-pairing.json`). Es gibt keinen Weg, ihn über das Netz anzufordern.
+- **Eigene Fern-Tür:** Der Tunnel zeigt nur auf einen eigenen Anschluss (`REMOTE_PORT`, 3002), und dort geht **jede** Anfrage durch die Prüfung auf ein gekoppeltes Gerät. Der Heimnetz-Port 3000 und der Medienserver sind nie über diese Adresse erreichbar. Ohne Kopplung sieht man nur eine Hinweisseite.
+- **Das Öffnen des Links verbraucht ihn nicht** (Link-Vorschauen schaden nicht), erst die Seite löst ihn im Hintergrund ein.
+- **Sperren:** Nach 5 Fehlversuchen von einer Adresse 15 Minuten gesperrt, nach 20 Fehlversuchen insgesamt pro Stunde für alle. Fehler dauern immer gleich lang.
+- **Sitzung:** zufälliges Cookie (`HttpOnly`, `Secure`, `SameSite=Lax`, damit auch Links von außen wie aus einer ntfy-Meldung angemeldet ankommen; Schreibzugriffe schützt die Origin-Prüfung), serverseitig gespeichert. Oben in der App steht „Abmelden".
+- **Weitere Schutzmaßnahmen:** Anfragen von fremden Seiten werden abgelehnt, Sicherheits-Header (CSP, HSTS, kein Einbetten), keine Zwischenspeicherung.
+- **Meldungen aufs Handy:** wenn ein neues Gerät gekoppelt wird und bei Fehlversuchen (höchstens alle 10 Minuten).
 - **Upload bis 100 MB:** Cloudflare lässt im kostenlosen Tarif etwa so viel pro Anfrage zu. Größere Videos lehnt der Server vorab mit einer klaren Meldung ab (im Heimnetz gehen bis 500 MB).
 
-Grenzen: Die Anmeldeseite ist öffentlich erreichbar, auch wenn man nur sie sieht. Der Schnelltunnel hat keine Verfügbarkeitszusage, und Cloudflare sieht den Verkehr. Sicherheit ist hier mit Tests geprüft, aber nicht von Dritten.
+Grenzen: Wer ein gekoppeltes, entsperrtes Handy hat, kommt bis zu 90 Tage in die App (dann `remote-revoke`). Ohne Zugriff auf den PC kann man kein neues Gerät koppeln, auch du nicht, wenn du unterwegs bist und der Server neu gestartet wurde. Der Schnelltunnel hat keine Verfügbarkeitszusage, und Cloudflare sieht den Verkehr. Die Absicherung ist mit Tests geprüft, aber nicht von Dritten.
 
 ### Benachrichtigungen
 
@@ -168,10 +169,10 @@ Die geheimen Zugangsdaten liegen nur auf dem Server (`.env`), nie in der App.
 ```
 setup.sh  Einrichtung auf einem neuen Rechner
 public/   App (HTML, CSS, JS, PWA) – Hauptmenü, Video-Seite, Touren-Platzhalter
-server/   Express-Server mit Planer und Wochenplan (schedule.js, settings.js), Fernzugriff mit Login (remote.js, totp.js, remoteauth.js), Vorrat (queue.js), Protokoll (log.js), Videoprüfung (videocheck.js),
+server/   Express-Server mit Planer und Wochenplan (schedule.js, settings.js), Fernzugriff für gekoppelte Geräte (remote.js, remoteauth.js), Vorrat (queue.js), Protokoll (log.js), Videoprüfung (videocheck.js),
           Benachrichtigung (notify.js), Medienserver (media.js, liefert nur Videodateien für den Tunnel aus), Tunnel (tunnel.js, startet cloudflared) und ein Modul pro Plattform (instagram.js, youtube.js, tiktok.js)
 data/     Vorrat, Wochenplan und Protokoll (queue.json, settings.json, log.jsonl), nicht im Repo
-scripts/  Hilfsskripte (QR-Code, YouTube- und TikTok-Anmeldung)
+scripts/  Hilfsskripte (QR-Code, Fernzugriff einschalten und koppeln, YouTube- und TikTok-Anmeldung)
 docs/     Screenshots für die README
 ```
 
@@ -188,7 +189,7 @@ Neue Unterseiten werden in `public/js/nav.js` eingetragen, neue Plattformen als 
 | `IG_ACCESS_TOKEN` | langlebiges Meta-Access-Token |
 | `PUBLIC_BASE_URL` | feste öffentliche Adresse des Medienservers, leer = automatischer Schnelltunnel |
 | `NTFY_TOPIC` | ntfy-Thema für Push-Nachrichten (leer = aus) |
-| `REMOTE_MODE` | `off` oder `tunnel`: Fernzugriff mit Passwort und Authenticator-Code |
+| `REMOTE_MODE` | `off` oder `tunnel`: Fernzugriff für per QR-Code gekoppelte Geräte |
 | `NTFY_SERVER` | eigener ntfy-Server, Standard `https://ntfy.sh` |
 | `PORT` | Port, Standard 3000 |
 
@@ -196,7 +197,7 @@ Für den Live-Modus braucht es ein Instagram-Business- oder Creator-Konto, eine 
 
 ## Status
 
-Prototyp. Alle drei Plattformen laufen im Testmodus (Upload, Vorrat, Wochenplan mit Autopilot, Status pro Plattform, Protokoll, Duplikatschutz, Warnungen). Instagram und YouTube sind live mit echten Konten getestet. TikTok ist programmiert, aber noch nicht mit einem echten Konto getestet (nur gegen eine Attrappe der Schnittstelle). TikTok-Videos bleiben bis zum App-Audit privat. Im Heimnetz-Modus (Port 3000) gibt es keinen Zugangsschutz, den Port nie ins Internet stellen. Über den Fernzugriff ist die App nur mit Passwort und Authenticator-Code erreichbar.
+Prototyp. Alle drei Plattformen laufen im Testmodus (Upload, Vorrat, Wochenplan mit Autopilot, Status pro Plattform, Protokoll, Duplikatschutz, Warnungen). Instagram und YouTube sind live mit echten Konten getestet. TikTok ist programmiert, aber noch nicht mit einem echten Konto getestet (nur gegen eine Attrappe der Schnittstelle). TikTok-Videos bleiben bis zum App-Audit privat. Im Heimnetz-Modus (Port 3000) gibt es keinen Zugangsschutz, den Port nie ins Internet stellen. Über den Fernzugriff ist die App nur für per QR-Code gekoppelte Geräte erreichbar.
 
 ## Geplant
 

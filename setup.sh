@@ -21,7 +21,7 @@ Ohne Optionen passiert Folgendes:
 Optionen:
   --firewall     Port in ufw für das Heimnetz freigeben (braucht sudo)
   --tunnel       cloudflared installieren (öffentliche Adresse für Instagram)
-  --remote       Fernzugriff direkt einrichten: Passwort und Authenticator-Code anlegen, danach Handy per QR-Code koppeln
+  --remote       Fernzugriff direkt einschalten (kein Passwort), danach ein Handy per QR-Code koppeln
                  (installiert auch cloudflared)
   --no-remote    Rückfrage zum Fernzugriff überspringen
   --no-service   keinen Dienst einrichten, der Server wird dann von Hand mit "npm start" gestartet
@@ -138,19 +138,14 @@ set_remote_mode() {
 if [ "$ASK_REMOTE" = 1 ] && [ "$WANT_REMOTE" = 0 ] && [ -t 0 ]; then
   step "Fernzugriff (von unterwegs)"
   REMOTE_CUR=$(grep -E '^REMOTE_MODE=' .env | tail -1 | cut -d= -f2 | tr -d '[:space:]' || true)
-  if [ -f data/remote-auth.json ] && [ "$REMOTE_CUR" = tunnel ]; then
-    ok "Fernzugriff ist eingeschaltet (Login mit Passwort und Authenticator-Code)"
+  if [ "$REMOTE_CUR" = tunnel ]; then
+    ok "Fernzugriff ist eingeschaltet (Handys werden per QR-Code gekoppelt: npm run remote-pair)"
     if ask_yn "Ausschalten (nur noch im Heimnetz erreichbar)?"; then
       set_remote_mode off; ok "Fernzugriff ausgeschaltet (REMOTE_MODE=off)"
     fi
-  elif [ -f data/remote-auth.json ]; then
-    echo "    Der Fernzugriff ist eingerichtet, aber ausgeschaltet."
-    if ask_yn "Wieder einschalten?"; then
-      set_remote_mode tunnel; WANT_TUNNEL=1; ok "Fernzugriff eingeschaltet (REMOTE_MODE=tunnel)"
-    fi
   else
-    echo "    Die App ist im Heimnetz (WLAN) erreichbar. Sie lässt sich zusätzlich von unterwegs öffnen,"
-    echo "    nur mit Passwort UND Code aus einer Authenticator-App. Der Router braucht dafür keine Freigabe."
+    echo "    Die App ist im Heimnetz (WLAN) erreichbar. Sie lässt sich zusätzlich von unterwegs öffnen."
+    echo "    Ein Handy kommt nur per QR-Code hinein, den du am PC erzeugst, ohne Passwort. Der Router braucht keine Freigabe."
     if ask_yn "Fernzugriff jetzt einrichten?"; then
       WANT_REMOTE=1; WANT_TUNNEL=1
     else
@@ -251,13 +246,14 @@ fi
 
 # ---------- Fernzugriff ----------
 if [ "$WANT_REMOTE" = 1 ]; then
-  step "Fernzugriff (Passwort und Authenticator-Code)"
+  step "Fernzugriff einschalten"
   node scripts/remote-setup.js
+  rm -f data/remote-url.json   # damit unten nicht eine alte Adresse als „fertig" gilt
   if [ "$WANT_SERVICE" = 1 ] && command -v systemctl >/dev/null; then
     systemctl --user restart tourpost.service && ok "Dienst neu gestartet, die Adresse für unterwegs kommt per ntfy aufs Handy (NTFY_TOPIC) und steht im Protokoll"
     if [ -t 0 ] && grep -qE '^REMOTE_MODE=tunnel' .env && ask_yn "Jetzt ein Handy per QR-Code koppeln (kein Passwort am Handy nötig)?"; then
       echo "    Warte, bis der Tunnel steht …"
-      for _ in $(seq 1 40); do [ -f data/remote-url.json ] && break; sleep 1; done
+      for _ in $(seq 1 90); do [ -f data/remote-url.json ] && break; sleep 1; done
       node scripts/remote-pair.js || warn "Später nachholen mit:  npm run remote-pair"
     fi
   fi
