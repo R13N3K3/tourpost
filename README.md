@@ -98,10 +98,10 @@ Läuft über die **Content Posting API** (Direct Post, die Datei wird direkt vom
     <td align="center"><b>Touren</b></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/index.png" width="180" alt="Hauptmenü"></td>
-    <td><img src="docs/screenshots/video.png" width="180" alt="Video verteilen"></td>
-    <td><img src="docs/screenshots/vorrat.png" width="180" alt="Vorrat und Planung"></td>
-    <td><img src="docs/screenshots/touren.png" width="180" alt="Touren"></td>
+    <td><img src="docs/screenshots/index.png?v=2" width="180" alt="Hauptmenü"></td>
+    <td><img src="docs/screenshots/video.png?v=2" width="180" alt="Video verteilen"></td>
+    <td><img src="docs/screenshots/vorrat.png?v=2" width="180" alt="Vorrat und Planung"></td>
+    <td><img src="docs/screenshots/touren.png?v=2" width="180" alt="Touren"></td>
   </tr>
 </table>
 
