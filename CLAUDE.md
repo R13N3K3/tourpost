@@ -30,6 +30,7 @@ Der Nutzer muss nicht jedes Mal daran erinnern.
 - **Nie mit den echten Daten.** Eine Kopie von `server/`, `public/`, `package.json` und `node_modules` in ein Wegwerf-Verzeichnis legen, dort auf einem anderen Port starten und Beispieldaten über die API anlegen (ein fertiges Video, ein paar im Vorrat, Wochenplan Freitags/Sonntags 12:00). Das echte `data/` darf nicht verändert werden.
 - Firefox macht das Bild, bevor `fetch` fertig ist. Nur in der Wegwerf-Kopie `api()` in `public/js/vorrat.js` auf einen **synchronen** `XMLHttpRequest` umstellen, damit die Vorrat-Seite vollständig gerendert wird. Diese Änderung nie in das echte Projekt übernehmen.
 - Danach das Bild ansehen und prüfen, bevor es committet wird.
+- **Versionsparameter in der README erhöhen:** GitHub zwischenspeichert README-Bilder (camo), ein ausgetauschtes Bild erscheint sonst oft stundenlang noch alt. Deshalb steht an den Bild-Links in der README `?v=<Zahl>` (zurzeit `?v=2`). Bei jedem neuen Screenshot die Zahl bei allen vier Links um eins erhöhen, im selben Commit.
 
 ## Server
 
