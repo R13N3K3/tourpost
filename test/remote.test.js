@@ -77,10 +77,14 @@ test('richtige Anmeldung setzt ein sicheres Cookie und öffnet die App', async (
   const raw = r.headers.get('set-cookie');
   assert.match(raw, /HttpOnly/i);
   assert.match(raw, /Secure/i);
-  assert.match(raw, /SameSite=Strict/i);
+  assert.match(raw, /SameSite=Lax/i);
   const cookie = cookieFrom(r);
   assert.equal(await (await get('/', cookie)).text(), 'geheime App');
   assert.deepEqual(await (await get('/api/queue', cookie)).json(), ['geheim']);
+  // schon angemeldet: die Anmeldeseite leitet direkt in die App
+  const l = await get('/login', cookie);
+  assert.equal(l.status, 302);
+  assert.equal(l.headers.get('location'), '/');
   assert.ok(alerts.some(a => /Anmeldung von außen/.test(a.title)));
   // Abmelden macht das Cookie wertlos
   assert.equal((await post('/api/remote/logout', {}, { Cookie: cookie })).status, 200);

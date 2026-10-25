@@ -116,7 +116,9 @@ function createGate({ authFile = auth.DEFAULT_FILE, pairFile = auth.PAIR_FILE, s
   router.use(setHeaders);
 
   // Anmeldeseite und ihre zwei Dateien (liegen in server/remote/, nicht in public/)
-  router.get('/login', (req, res) => res.sendFile(path.join(LOGIN_DIR, 'login.html')));
+  // Wer schon angemeldet ist, kommt direkt in die App. Das Cookie ist SameSite=Lax, damit auch Links von außen (ntfy, QR-Scanner,
+  // andere Apps) angemeldet ankommen. Schreibzugriffe schützt weiter die Origin-Prüfung, und alle GET-Routen der App sind lesend.
+  router.get('/login', (req, res) => sessionOf(req) ? res.redirect('/') : res.sendFile(path.join(LOGIN_DIR, 'login.html')));
   router.get('/remote-login.js', (req, res) => res.sendFile(path.join(LOGIN_DIR, 'login.js')));
   router.get('/remote-login.css', (req, res) => res.sendFile(path.join(LOGIN_DIR, 'login.css')));
 
@@ -146,7 +148,7 @@ function createGate({ authFile = auth.DEFAULT_FILE, pairFile = auth.PAIR_FILE, s
     const merken = remember === true;
     sessions.set(sha(token), { created: now(), last: now(), remember: merken });
     persist();
-    res.cookie(COOKIE, token, { httpOnly: true, secure: true, sameSite: 'strict', path: '/', maxAge: merken ? REMEMBER_MAX_MS : SESSION_MAX_MS });
+    res.cookie(COOKIE, token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: merken ? REMEMBER_MAX_MS : SESSION_MAX_MS });
     alert({ title: 'TourPost: Anmeldung von außen', message: `Erfolgreich angemeldet, Adresse ${ip}${merken ? ' (Gerät wird 90 Tage gemerkt)' : ''}.`, priority: 3, tags: ['key'] });
     res.json({ ok: true });
   });
@@ -170,7 +172,7 @@ function createGate({ authFile = auth.DEFAULT_FILE, pairFile = auth.PAIR_FILE, s
     const token = crypto.randomBytes(32).toString('hex');
     sessions.set(sha(token), { created: now(), last: now(), remember: true });
     persist();
-    res.cookie(COOKIE, token, { httpOnly: true, secure: true, sameSite: 'strict', path: '/', maxAge: REMEMBER_MAX_MS });
+    res.cookie(COOKIE, token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: REMEMBER_MAX_MS });
     alert({ title: 'TourPost: Neues Gerät gekoppelt', message: `Per QR-Code angemeldet, Adresse ${ip} (Gerät wird 90 Tage gemerkt).`, priority: 3, tags: ['iphone'] });
     res.json({ ok: true });
   });
@@ -178,7 +180,7 @@ function createGate({ authFile = auth.DEFAULT_FILE, pairFile = auth.PAIR_FILE, s
   router.post('/api/remote/logout', sameOrigin, (req, res) => {
     const s = sessionOf(req);
     if (s) { sessions.delete(s.key); persist(); }
-    res.clearCookie(COOKIE, { path: '/', httpOnly: true, secure: true, sameSite: 'strict' });
+    res.clearCookie(COOKIE, { path: '/', httpOnly: true, secure: true, sameSite: 'lax' });
     res.json({ ok: true });
   });
 
