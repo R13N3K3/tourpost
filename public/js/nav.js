@@ -26,7 +26,7 @@ const PAGES = [
   {
     href: 'touren.html',
     label: 'Touren',
-    title: 'Pilztouren',
+    title: 'Touren',
     desc: 'Kundenansicht für gebuchte Touren',
     nav: true,
     soon: true,

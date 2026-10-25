@@ -95,13 +95,13 @@ Läuft über die **Content Posting API** (Direct Post, die Datei wird direkt vom
     <td align="center"><b>Hauptmenü</b></td>
     <td align="center"><b>Video verteilen</b></td>
     <td align="center"><b>Vorrat &amp; Planung</b></td>
-    <td align="center"><b>Pilztouren</b></td>
+    <td align="center"><b>Touren</b></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/index.png" width="180" alt="Hauptmenü"></td>
     <td><img src="docs/screenshots/video.png" width="180" alt="Video verteilen"></td>
     <td><img src="docs/screenshots/vorrat.png" width="180" alt="Vorrat und Planung"></td>
-    <td><img src="docs/screenshots/touren.png" width="180" alt="Pilztouren"></td>
+    <td><img src="docs/screenshots/touren.png" width="180" alt="Touren"></td>
   </tr>
 </table>
 
@@ -163,7 +163,7 @@ Die geheimen Zugangsdaten liegen nur auf dem Server (`.env`), nie in der App.
 
 ```
 setup.sh  Einrichtung auf einem neuen Rechner
-public/   App (HTML, CSS, JS, PWA) – Hauptmenü, Video-Seite, Pilztouren-Platzhalter
+public/   App (HTML, CSS, JS, PWA) – Hauptmenü, Video-Seite, Touren-Platzhalter
 server/   Express-Server mit Planer und Wochenplan (schedule.js, settings.js), Fernzugriff mit Login (remote.js, totp.js, remoteauth.js), Vorrat (queue.js), Protokoll (log.js), Videoprüfung (videocheck.js),
           Benachrichtigung (notify.js), Medienserver (media.js, liefert nur Videodateien für den Tunnel aus), Tunnel (tunnel.js, startet cloudflared) und ein Modul pro Plattform (instagram.js, youtube.js, tiktok.js)
 data/     Vorrat, Wochenplan und Protokoll (queue.json, settings.json, log.jsonl), nicht im Repo
@@ -198,4 +198,4 @@ Prototyp. Alle drei Plattformen laufen im Testmodus (Upload, Vorrat, Wochenplan 
 
 - TikTok live testen (erst nach dem App-Audit öffentlich)
 - Zugangsschutz auch im Heimnetz-Modus (optional)
-- Kundenansicht für gebuchte Pilztouren
+- Kundenansicht für gebuchte Touren
