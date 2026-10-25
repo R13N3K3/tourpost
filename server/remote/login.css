@@ -10,3 +10,8 @@ button:disabled { opacity: 0.6; }
 #fehler { margin: 12px 0 0; color: #ff8d9a; }
 .check { display: flex; gap: 10px; align-items: center; margin-top: 16px; font-size: 0.9rem; opacity: 1; }
 .check input { width: auto; }
+.hidden-user { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.pw { position: relative; }
+.pw input { padding-right: 96px; }
+.pw button { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: auto; margin: 0; padding: 7px 12px; font-size: 0.85rem; font-weight: 600; color: inherit; background: rgba(255, 255, 255, 0.14); }
+#code { letter-spacing: 0.3em; font-size: 1.2rem; text-align: center; }

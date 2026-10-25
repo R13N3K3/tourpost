@@ -12,10 +12,18 @@
   <main>
     <h1>TourPost</h1>
     <form id="form" autocomplete="on">
+      <!-- für Passwortmanager: speichert und füllt Passwort mit einem Tipp -->
+      <input class="hidden-user" name="username" type="text" value="TourPost Fernzugriff" autocomplete="username" tabindex="-1" aria-hidden="true">
+
       <label for="password">Passwort</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <div class="pw">
+        <input id="password" name="password" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" required autofocus>
+        <button type="button" id="zeigen" aria-pressed="false">Anzeigen</button>
+      </div>
+
       <label for="code">Code aus der Authenticator-App</label>
-      <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+      <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" required>
+
       <label class="check"><input id="remember" type="checkbox"> Dieses Gerät 90 Tage merken</label>
       <p id="fehler" role="alert" hidden></p>
       <button type="submit" id="senden">Anmelden</button>
