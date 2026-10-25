@@ -39,6 +39,7 @@ Alle Zugangsdaten stehen in der Datei **`.env`** im Projektordner (`./setup.sh` 
 | `MEDIA_PORT` | Port des Medienservers, Standard 3001 |
 | `REMOTE_MODE` | `off` = nur Heimnetz (Standard), `tunnel` = zusätzlich Fernzugriff für per QR-Code gekoppelte Geräte (siehe „Fernzugriff von unterwegs") |
 | `REMOTE_PORT` | Port der Fern-Tür, Standard 3002 (nur lokal, nur auf diesen zeigt der Fern-Tunnel) |
+| `TUNNEL_CHECK_MINUTES` | Wie oft die Tunnel-Adresse geprüft wird, Standard 5 Minuten |
 | `YT_MODE` | `test` oder `live` für YouTube |
 | `YT_CLIENT_ID`, `YT_CLIENT_SECRET` | OAuth-Client aus der Google Cloud Console |
 | `YT_REFRESH_TOKEN` | Wird von `npm run youtube-auth` eingetragen, nicht von Hand |
@@ -122,7 +123,7 @@ Standard ist der **Heimnetz-Modus**: Die App ist nur im WLAN erreichbar, ohne Lo
 Es gibt **keine Anmeldeseite und kein Passwort**. Ein Handy kommt nur über einen **QR-Code** hinein, den du am PC erzeugst:
 
 ```bash
-./setup.sh               # fragt, ob der Fernzugriff eingeschaltet werden soll (oder gezielt: ./setup.sh --remote)
+./setup.sh               # fragt, ob der Fernzugriff eingeschaltet werden soll (nur Enter = ja, gezielt: ./setup.sh --remote)
 npm run remote-pair      # zeigt den QR-Code, mit der Handy-Kamera scannen
 ```
 
@@ -135,6 +136,7 @@ So ist es abgesichert:
 - **Sperren:** Nach 5 Fehlversuchen von einer Adresse 15 Minuten gesperrt, nach 20 Fehlversuchen insgesamt pro Stunde für alle. Fehler dauern immer gleich lang.
 - **Sitzung:** zufälliges Cookie (`HttpOnly`, `Secure`, `SameSite=Lax`, damit auch Links von außen wie aus einer ntfy-Meldung angemeldet ankommen; Schreibzugriffe schützt die Origin-Prüfung), serverseitig gespeichert. Oben in der App steht „Abmelden".
 - **Weitere Schutzmaßnahmen:** Anfragen von fremden Seiten werden abgelehnt, Sicherheits-Header (CSP, HSTS, kein Einbetten), keine Zwischenspeicherung.
+- **Tunnel-Überwachung:** Alle 5 Minuten (`TUNNEL_CHECK_MINUTES`) prüft der Server, ob die Adresse wirklich antwortet. Antwortet sie zweimal hintereinander nicht, obwohl das Internet geht, startet er `cloudflared` neu (die Adresse ändert sich dann, du bekommst die neue per ntfy und koppelst das Handy neu). Fällt nur das Internet aus, passiert nichts: `cloudflared` verbindet sich dann von selbst wieder. Das gilt auch für den Medien-Tunnel für Instagram.
 - **Meldungen aufs Handy:** wenn ein neues Gerät gekoppelt wird und bei Fehlversuchen (höchstens alle 10 Minuten).
 - **Upload bis 100 MB:** Cloudflare lässt im kostenlosen Tarif etwa so viel pro Anfrage zu. Größere Videos lehnt der Server vorab mit einer klaren Meldung ab (im Heimnetz gehen bis 500 MB).
 

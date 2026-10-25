@@ -1,5 +1,7 @@
 // Startet bei Bedarf einen Cloudflare-Schnelltunnel (ohne Konto) auf einen lokalen Port und liest die
 // öffentliche Adresse aus. Fällt der Tunnel aus, wird er neu gestartet (die Adresse ändert sich dann).
+// Eine Überwachung prüft regelmäßig, ob die Adresse wirklich antwortet, und startet cloudflared neu, wenn der Tunnel
+// zwar läuft, aber nicht mehr erreichbar ist (zum Beispiel nach einem WLAN-Wechsel oder Standby).
 // Es gibt zwei Tunnel mit getrennten Zielen:
 //   - Medien-Tunnel (Standard-Export): nur der Medienserver, Instagram holt das Video von dort ab
 //   - Fern-Tunnel (create): nur die Fern-Tür mit Login, siehe remote.js
@@ -8,22 +10,34 @@ const { notify } = require('./notify');
 
 const URL_RE = /https:\/\/(?!api\.)[a-z0-9-]+\.trycloudflare\.com/;
 const READY_TIMEOUT_MS = 90_000;
+const CHECK_MS = (Number(process.env.TUNNEL_CHECK_MINUTES) || 5) * 60e3;   // so oft wird geprüft
+const FAILS_BEFORE_RESTART = 2;                                             // erst nach zwei Fehlprüfungen in Folge neu starten
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// Ist das Internet überhaupt erreichbar? Dann liegt ein Fehler beim Tunnel, nicht am Netz.
+async function internetOk() {
+  try {
+    return (await fetch('https://www.cloudflare.com/cdn-cgi/trace', { signal: AbortSignal.timeout(8000) })).ok;
+  } catch {
+    return false;
+  }
+}
+
 // enabled: () => bool, wird beim Start geprüft; probePath/probeStatus: wie erkennt man, dass der Tunnel antwortet
-function create({ name, enabled, probePath, probeStatus, onUrl }) {
-  let active = false, child = null, url = null, delay = 2000, stopping = false, port = 0;
+// Nur für Tests: bin (Programm), probe(url) und internet() ersetzen die echten Prüfungen, checkMs und restartDelayMs sind die Zeiten.
+function create({ name, enabled, probePath, probeStatus, onUrl, bin, probe, internet = internetOk, checkMs = CHECK_MS, restartDelayMs = 2000 }) {
+  let active = false, child = null, url = null, delay = restartDelayMs, stopping = false, port = 0, failures = 0, timer = null;
 
   function launch() {
-    const bin = process.env.CLOUDFLARED_BIN || 'cloudflared';
-    child = spawn(bin, ['tunnel', '--no-autoupdate', '--url', `http://127.0.0.1:${port}`], { stdio: ['ignore', 'ignore', 'pipe'] });
+    child = spawn(bin || process.env.CLOUDFLARED_BIN || 'cloudflared', ['tunnel', '--no-autoupdate', '--url', `http://127.0.0.1:${port}`], { stdio: ['ignore', 'ignore', 'pipe'] });
     let buf = '';
     child.stderr.on('data', d => {
       buf = (buf + d).slice(-4000);
       const m = buf.match(URL_RE);
       if (m && m[0] !== url) {
         url = m[0];
-        delay = 2000;
+        delay = restartDelayMs;
+        failures = 0;
         console.log(`${name}: ${url}`);
         if (onUrl) Promise.resolve(onUrl(url)).catch(() => {});
       }
@@ -49,18 +63,36 @@ function create({ name, enabled, probePath, probeStatus, onUrl }) {
     port = targetPort;
     active = true;
     launch();
-    const stop = () => { stopping = true; child?.kill(); };
+    timer = setInterval(watchdog, checkMs);
+    timer.unref();
+    const stop = () => { stopping = true; clearInterval(timer); child?.kill(); };
     process.on('exit', stop);
     for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { stop(); process.exit(0); });
     return true;
   }
 
   async function reachable(u) {
+    if (probe) return probe(u);
     try {
       const res = await fetch(`${u}${probePath}`, { signal: AbortSignal.timeout(8000), redirect: 'manual' });
       return res.status === probeStatus;
     } catch {
       return false;
+    }
+  }
+
+  // Regelmäßige Prüfung: antwortet die Adresse nicht mehr, obwohl das Internet geht, wird cloudflared neu gestartet
+  // (dabei ändert sich die Adresse). Fällt nur das Internet aus, passiert nichts, cloudflared verbindet sich dann selbst neu.
+  async function watchdog() {
+    if (!active || !child || !url) return;
+    if (await reachable(url)) { failures = 0; return; }
+    if (!(await internet())) return;
+    failures++;
+    console.error(`${name} antwortet nicht (${failures}/${FAILS_BEFORE_RESTART})`);
+    if (failures >= FAILS_BEFORE_RESTART) {
+      failures = 0;
+      console.error(`${name} wird neu gestartet`);
+      child.kill();   // der exit-Handler startet ihn neu
     }
   }
 
@@ -75,7 +107,7 @@ function create({ name, enabled, probePath, probeStatus, onUrl }) {
     throw new Error('Der Tunnel ist nicht erreichbar (cloudflared). Er wird neu gestartet, bitte später erneut versuchen.');
   }
 
-  return { start, ready, isActive: () => active, current: () => url };
+  return { start, ready, watchdog, isActive: () => active, current: () => url };
 }
 
 // Medien-Tunnel: nur im Live-Modus und nur, wenn keine feste PUBLIC_BASE_URL in der .env steht.

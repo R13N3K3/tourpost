@@ -23,7 +23,7 @@ Optionen:
   --tunnel       cloudflared installieren (öffentliche Adresse für Instagram)
   --remote       Fernzugriff direkt einschalten (kein Passwort), danach ein Handy per QR-Code koppeln
                  (installiert auch cloudflared)
-  --no-remote    Rückfrage zum Fernzugriff überspringen
+  --no-remote    Rückfrage zum Fernzugriff überspringen (ohne diese Option: Enter = Fernzugriff einschalten)
   --no-service   keinen Dienst einrichten, der Server wird dann von Hand mit "npm start" gestartet
   --service      Dienst einrichten (ist schon der Standard, die Option bleibt aus Gewohnheit erhalten)
   -h, --help     diese Hilfe anzeigen
@@ -129,7 +129,13 @@ IP=$(lan_ip || true)
 
 # ---------- Rückfrage: Fernzugriff ----------
 # Nur im Terminal und nur, wenn --remote / --no-remote nicht schon etwas festlegen.
-ask_yn() { local a; read -r -p "    $1 [j/N] " a; case "$a" in j|J|ja|Ja|JA|y|Y|yes) return 0 ;; *) return 1 ;; esac; }
+# ask_yn "Frage" [j|n]: das zweite Argument ist die Vorgabe bei Enter (Standard: n)
+ask_yn() {
+  local def="${2:-n}" hint a
+  [ "$def" = j ] && hint="J/n" || hint="j/N"
+  read -r -p "    $1 [$hint] " a
+  case "${a:-$def}" in j|J|ja|Ja|JA|y|Y|yes) return 0 ;; *) return 1 ;; esac
+}
 set_remote_mode() {
   node -e "require('./server/util').setEnvVar('REMOTE_MODE', process.argv[1])" "$1"
   [ "$WANT_SERVICE" = 1 ] || warn "Ohne Dienst gilt die Änderung erst nach einem Neustart des Servers (npm start)."
@@ -146,10 +152,10 @@ if [ "$ASK_REMOTE" = 1 ] && [ "$WANT_REMOTE" = 0 ] && [ -t 0 ]; then
   else
     echo "    Die App ist im Heimnetz (WLAN) erreichbar. Sie lässt sich zusätzlich von unterwegs öffnen."
     echo "    Ein Handy kommt nur per QR-Code hinein, den du am PC erzeugst, ohne Passwort. Der Router braucht keine Freigabe."
-    if ask_yn "Fernzugriff jetzt einrichten?"; then
+    if ask_yn "Fernzugriff einschalten? (Enter = ja)" j; then
       WANT_REMOTE=1; WANT_TUNNEL=1
     else
-      ok "Übersprungen. Später: ./setup.sh --remote"
+      ok "Nur Heimnetz. Später einschalten: ./setup.sh --remote"
     fi
   fi
 fi
@@ -251,7 +257,7 @@ if [ "$WANT_REMOTE" = 1 ]; then
   rm -f data/remote-url.json   # damit unten nicht eine alte Adresse als „fertig" gilt
   if [ "$WANT_SERVICE" = 1 ] && command -v systemctl >/dev/null; then
     systemctl --user restart tourpost.service && ok "Dienst neu gestartet, die Adresse für unterwegs kommt per ntfy aufs Handy (NTFY_TOPIC) und steht im Protokoll"
-    if [ -t 0 ] && grep -qE '^REMOTE_MODE=tunnel' .env && ask_yn "Jetzt ein Handy per QR-Code koppeln (kein Passwort am Handy nötig)?"; then
+    if [ -t 0 ] && grep -qE '^REMOTE_MODE=tunnel' .env && ask_yn "Jetzt ein Handy per QR-Code koppeln (kein Passwort am Handy nötig)? (Enter = ja)" j; then
       echo "    Warte, bis der Tunnel steht …"
       for _ in $(seq 1 90); do [ -f data/remote-url.json ] && break; sleep 1; done
       node scripts/remote-pair.js || warn "Später nachholen mit:  npm run remote-pair"
